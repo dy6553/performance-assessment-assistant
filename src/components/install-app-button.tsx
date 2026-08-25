@@ -16,10 +16,6 @@ type NavigatorWithStandalone = Navigator & {
   standalone?: boolean;
 };
 
-type InstallPromptWindow = Window & {
-  __pwaInstallPrompt?: BeforeInstallPromptEvent | null;
-};
-
 function isStandalone() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
@@ -35,14 +31,6 @@ function isIos() {
   return /iPad|iPhone|iPod/i.test(navigator.userAgent);
 }
 
-function getStoredInstallPrompt() {
-  return (window as InstallPromptWindow).__pwaInstallPrompt ?? null;
-}
-
-function clearStoredInstallPrompt() {
-  (window as InstallPromptWindow).__pwaInstallPrompt = null;
-}
-
 export function InstallAppButton() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
@@ -51,59 +39,50 @@ export function InstallAppButton() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
+    const samsung = isSamsungInternet();
+
     setInstalled(isStandalone());
-    setSamsungInternet(isSamsungInternet());
+    setSamsungInternet(samsung);
     setIos(isIos());
 
-    const syncStoredPrompt = () => {
-      const storedPrompt = getStoredInstallPrompt();
-      if (storedPrompt) {
-        setInstallPrompt(storedPrompt);
-      }
-    };
-
     const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
       const promptEvent = event as BeforeInstallPromptEvent;
-      (window as InstallPromptWindow).__pwaInstallPrompt = promptEvent;
+
+      // Samsung Internet uses its own install indication in the browser UI.
+      // Do not cancel the event there, because that can suppress native install promotion.
+      if (!samsung) {
+        event.preventDefault();
+      }
+
       setInstallPrompt(promptEvent);
     };
 
     const onInstalled = () => {
-      clearStoredInstallPrompt();
       setInstalled(true);
       setInstallPrompt(null);
       setHelpOpen(false);
     };
 
-    syncStoredPrompt();
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    window.addEventListener("pwa-install-prompt-ready", syncStoredPrompt);
     window.addEventListener("appinstalled", onInstalled);
-    window.addEventListener("pwa-app-installed", onInstalled);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-      window.removeEventListener("pwa-install-prompt-ready", syncStoredPrompt);
       window.removeEventListener("appinstalled", onInstalled);
-      window.removeEventListener("pwa-app-installed", onInstalled);
     };
   }, []);
 
   if (installed) return null;
 
   const requestInstall = async () => {
-    const promptEvent = installPrompt ?? getStoredInstallPrompt();
-
-    if (!promptEvent) {
+    if (!installPrompt) {
       setHelpOpen(true);
       return;
     }
 
     try {
-      await promptEvent.prompt();
-      const choice = await promptEvent.userChoice;
-      clearStoredInstallPrompt();
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
       setInstallPrompt(null);
 
       if (choice.outcome === "accepted") {
@@ -163,17 +142,14 @@ export function InstallAppButton() {
             ) : samsungInternet ? (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  삼성 인터넷은 버전에 따라 웹페이지의 <strong>beforeinstallprompt</strong> 이벤트를 제공하지 않을 수 있습니다. 이 경우 브라우저 자체 메뉴에서 설치해야 합니다.
+                  삼성 인터넷의 기본 설치 표시를 웹페이지가 막지 않도록 수정했습니다. 주소창의 설치 아이콘 또는 브라우저 메뉴의 설치 항목을 사용하세요.
                 </p>
                 <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
-                  <li>삼성 인터넷의 <strong>메뉴</strong>를 엽니다.</li>
-                  <li><strong>현재 페이지 추가</strong> 또는 <strong>앱 설치</strong> 항목을 찾습니다.</li>
-                  <li><strong>앱스 화면</strong> 또는 설치 항목을 선택합니다.</li>
-                  <li><strong>추가/설치</strong>를 눌러 완료합니다.</li>
+                  <li>페이지를 한 번 새로고침합니다.</li>
+                  <li>주소창에 설치 아이콘이 나타나는지 확인합니다.</li>
+                  <li>없으면 삼성 인터넷 <strong>메뉴</strong>에서 <strong>현재 페이지 추가</strong> 또는 <strong>앱 설치</strong>를 확인합니다.</li>
+                  <li>가능하면 <strong>앱스 화면</strong> 설치를 선택합니다.</li>
                 </ol>
-                <div className="mt-4 rounded-2xl bg-violet-50 p-4 text-sm leading-6 text-violet-950">
-                  주소창에 설치 아이콘이 표시되면 그 아이콘을 눌러도 됩니다.
-                </div>
               </>
             ) : (
               <>
