@@ -1,13 +1,17 @@
+import { InstallAppButton } from "@/components/install-app-button";
 import { AssessmentClient } from "@/features/assessment/assessment-client";
 
 export default function HomePage() {
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
       <header className="mb-8 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-9">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-violet-100 px-3 py-1.5 text-xs font-black text-violet-700">wanhee</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">NVIDIA AI Router</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">교육과정·루브릭 기반</span>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-violet-100 px-3 py-1.5 text-xs font-black text-violet-700">wanhee</span>
+            <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">NVIDIA AI Router</span>
+            <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">교육과정·루브릭 기반</span>
+          </div>
+          <InstallAppButton />
         </div>
         <h1 className="mt-5 max-w-4xl text-4xl font-black leading-[1.08] tracking-[-0.055em] text-slate-950 sm:text-6xl">
           수행평가를 쓰기 전에
