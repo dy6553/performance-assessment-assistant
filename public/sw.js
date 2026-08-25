@@ -1,9 +1,8 @@
-const CACHE_NAME = "performance-helper-shell-v1";
+const CACHE_NAME = "performance-helper-shell-v4";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
   "/icon.svg",
-  "/apple-touch-icon.png",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ];
@@ -23,10 +22,12 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
+  if (
+    event.request.method !== "GET" ||
+    new URL(event.request.url).origin !== self.location.origin
+  ) {
+    return;
+  }
 
   if (event.request.mode === "navigate") {
     event.respondWith(fetch(event.request).catch(() => caches.match("/")));
