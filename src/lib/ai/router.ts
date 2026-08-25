@@ -41,7 +41,12 @@ type RegistryRow = {
 };
 
 type RegistryCache = { records: ModelRecord[]; expiresAt: number };
-type AvailabilityCache = { ids: Set<string>; expiresAt: number; live: boolean };
+type AvailabilityCache = {
+  ids: Set<string>;
+  expiresAt: number;
+  live: boolean;
+  catalogSynced: boolean;
+};
 
 let registryCache: RegistryCache | undefined;
 let availabilityCache: AvailabilityCache | undefined;
@@ -53,6 +58,12 @@ export type ModelRoute = {
   registryPolicy: "hard-filtered";
   registrySource: "supabase";
   liveCatalogChecked: boolean;
+};
+
+export type ModelCatalogRefresh = {
+  catalogIds: string[];
+  synced: boolean;
+  observedAt: string;
 };
 
 export async function routeModel({
@@ -105,13 +116,48 @@ export async function routeModel({
         ? "정확도 우선 작업이라 고품질 tier와 task affinity를 우선했습니다."
         : "구조화 분석 작업이라 검증된 효율 tier를 우선했습니다.",
       availability.live
-        ? "NVIDIA 실시간 모델 카탈로그와 교집합을 확인했고 새 모델은 검증 대기 후보로 자동 동기화했습니다."
+        ? availability.catalogSynced
+          ? "NVIDIA 실시간 모델 카탈로그와 교집합을 확인했고 새 모델은 검증 대기 후보로 자동 동기화했습니다."
+          : "NVIDIA 실시간 모델 카탈로그는 확인했지만 후보 Registry 동기화는 실패해 다음 실행에서 재시도합니다."
         : "실시간 카탈로그 확인 실패 시 DB의 사전 승인 Registry만 사용했습니다.",
     ].join(" "),
     registryPolicy: "hard-filtered",
     registrySource: "supabase",
     liveCatalogChecked: availability.live,
   };
+}
+
+export async function refreshModelCatalog(): Promise<ModelCatalogRefresh> {
+  const apiKey = process.env.NVIDIA_API_KEY?.trim();
+  if (!apiKey) throw new Error("NVIDIA_API_KEY가 설정되지 않았습니다.");
+
+  const baseUrl = (process.env.NVIDIA_BASE_URL?.trim() || "https://integrate.api.nvidia.com/v1").replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`NVIDIA 모델 카탈로그 조회에 실패했습니다. (NVIDIA_${response.status})`);
+  }
+
+  const payload = (await response.json()) as { data?: Array<{ id?: unknown }> };
+  const catalogIds = Array.from(
+    new Set(
+      (payload.data ?? [])
+        .map((item) => (typeof item.id === "string" ? item.id.trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+
+  if (!catalogIds.length) {
+    throw new Error("NVIDIA 모델 카탈로그가 비어 있습니다.");
+  }
+
+  const observedAt = new Date().toISOString();
+  const synced = await syncCatalogCandidates(catalogIds, observedAt);
+  return { catalogIds, synced, observedAt };
 }
 
 async function loadApprovedRegistry(now = Date.now()): Promise<ModelRecord[]> {
@@ -246,50 +292,34 @@ async function getAvailableApprovedModels(
 ): Promise<AvailabilityCache> {
   if (availabilityCache && availabilityCache.expiresAt > now) return availabilityCache;
 
-  const apiKey = process.env.NVIDIA_API_KEY?.trim();
-  if (!apiKey) throw new Error("NVIDIA_API_KEY가 설정되지 않았습니다.");
-
   const approvedIds = new Set(registry.map((model) => model.id));
-  const baseUrl = (process.env.NVIDIA_BASE_URL?.trim() || "https://integrate.api.nvidia.com/v1").replace(/\/$/, "");
 
   try {
-    const response = await fetch(`${baseUrl}/models`, {
-      headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
-      cache: "no-store",
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!response.ok) throw new Error("catalog unavailable");
-
-    const payload = (await response.json()) as { data?: Array<{ id?: unknown }> };
-    const catalogIds = Array.from(
-      new Set(
-        (payload.data ?? [])
-          .map((item) => (typeof item.id === "string" ? item.id.trim() : ""))
-          .filter(Boolean),
-      ),
-    );
-
-    await syncCatalogCandidates(catalogIds);
-
-    const liveIds = new Set(catalogIds.filter((id) => approvedIds.has(id)));
+    const refresh = await refreshModelCatalog();
+    const liveIds = new Set(refresh.catalogIds.filter((id) => approvedIds.has(id)));
     availabilityCache = {
       ids: liveIds,
       expiresAt: now + 60 * 60 * 1_000,
       live: true,
+      catalogSynced: refresh.synced,
     };
   } catch {
     availabilityCache = {
       ids: approvedIds,
       expiresAt: now + 10 * 60 * 1_000,
       live: false,
+      catalogSynced: false,
     };
   }
 
   return availabilityCache;
 }
 
-async function syncCatalogCandidates(catalogIds: readonly string[]): Promise<void> {
-  if (!catalogIds.length) return;
+async function syncCatalogCandidates(
+  catalogIds: readonly string[],
+  observedAt: string,
+): Promise<boolean> {
+  if (!catalogIds.length) return false;
 
   try {
     const { supabaseUrl, secretKey } = readRegistryConfig();
@@ -302,7 +332,7 @@ async function syncCatalogCandidates(catalogIds: readonly string[]): Promise<voi
       },
       body: JSON.stringify({
         catalog_model_ids: catalogIds,
-        observed_at: new Date().toISOString(),
+        observed_at: observedAt,
       }),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
@@ -310,9 +340,12 @@ async function syncCatalogCandidates(catalogIds: readonly string[]): Promise<voi
 
     if (!response.ok) {
       console.warn(`NVIDIA 후보 모델 동기화 실패: SUPABASE_${response.status}`);
+      return false;
     }
+    return true;
   } catch {
     console.warn("NVIDIA 후보 모델 동기화를 완료하지 못했습니다.");
+    return false;
   }
 }
 
