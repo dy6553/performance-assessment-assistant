@@ -1,5 +1,7 @@
 -- wanhee 수행평가 도우미 초기 데이터 모델
 -- 모든 public 테이블은 RLS를 활성화하고, 학생 소유 데이터는 auth.uid()로 격리한다.
+-- 2026-08 신규 Supabase 프로젝트의 Data API 기본 비노출 정책을 고려해 필요한 GRANT를 명시한다.
+-- Storage bucket 자체는 Storage API/Dashboard에서 생성하고, 여기서는 storage.objects RLS 정책만 정의한다.
 
 create extension if not exists pgcrypto;
 
@@ -196,6 +198,46 @@ alter table public.router_decisions enable row level security;
 alter table public.model_registry enable row level security;
 alter table public.university_evaluation_profiles enable row level security;
 
+-- 신규 프로젝트에서는 public 테이블의 Data API 권한이 자동 부여되지 않을 수 있으므로 명시적으로 설정한다.
+revoke all on table public.assignments from anon, authenticated;
+revoke all on table public.curriculum_context from anon, authenticated;
+revoke all on table public.rubric_items from anon, authenticated;
+revoke all on table public.sources from anon, authenticated;
+revoke all on table public.drafts from anon, authenticated;
+revoke all on table public.verification_results from anon, authenticated;
+revoke all on table public.claims from anon, authenticated;
+revoke all on table public.evidence from anon, authenticated;
+revoke all on table public.ai_runs from anon, authenticated;
+revoke all on table public.router_decisions from anon, authenticated;
+revoke all on table public.model_registry from anon, authenticated;
+revoke all on table public.university_evaluation_profiles from anon, authenticated;
+
+grant select, insert, update, delete on table
+  public.assignments,
+  public.curriculum_context,
+  public.rubric_items,
+  public.sources,
+  public.drafts,
+  public.verification_results,
+  public.claims,
+  public.evidence
+  to authenticated;
+
+grant select, insert, update, delete on table
+  public.assignments,
+  public.curriculum_context,
+  public.rubric_items,
+  public.sources,
+  public.drafts,
+  public.verification_results,
+  public.claims,
+  public.evidence,
+  public.ai_runs,
+  public.router_decisions,
+  public.model_registry,
+  public.university_evaluation_profiles
+  to service_role;
+
 create policy "assignments_select_own" on public.assignments for select to authenticated using ((select auth.uid()) = user_id);
 create policy "assignments_insert_own" on public.assignments for insert to authenticated with check ((select auth.uid()) = user_id);
 create policy "assignments_update_own" on public.assignments for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
@@ -222,7 +264,6 @@ create policy "rubric_own" on public.rubric_items for all to authenticated using
 create policy "sources_own" on public.sources for all to authenticated using (public.owns_assignment(assignment_id)) with check (public.owns_assignment(assignment_id));
 create policy "drafts_own" on public.drafts for all to authenticated using (public.owns_assignment(assignment_id)) with check (public.owns_assignment(assignment_id));
 create policy "claims_own" on public.claims for all to authenticated using (public.owns_assignment(assignment_id)) with check (public.owns_assignment(assignment_id));
-create policy "ai_runs_own" on public.ai_runs for all to authenticated using (assignment_id is not null and public.owns_assignment(assignment_id)) with check (assignment_id is not null and public.owns_assignment(assignment_id));
 
 create policy "verification_own" on public.verification_results for all to authenticated
 using (exists (select 1 from public.drafts d where d.id = draft_id and public.owns_assignment(d.assignment_id)))
@@ -232,14 +273,9 @@ create policy "evidence_own" on public.evidence for all to authenticated
 using (exists (select 1 from public.claims c where c.id = claim_id and public.owns_assignment(c.assignment_id)))
 with check (exists (select 1 from public.claims c where c.id = claim_id and public.owns_assignment(c.assignment_id)));
 
-create policy "router_decisions_own" on public.router_decisions for all to authenticated
-using (exists (select 1 from public.ai_runs r where r.id = ai_run_id and r.assignment_id is not null and public.owns_assignment(r.assignment_id)))
-with check (exists (select 1 from public.ai_runs r where r.id = ai_run_id and r.assignment_id is not null and public.owns_assignment(r.assignment_id)));
-
-insert into storage.buckets (id, name, public)
-values ('assignment-files', 'assignment-files', false)
-on conflict (id) do nothing;
-
+-- AI 실행/라우팅 이력과 모델 레지스트리, 대학 평가 프로필은 서버 전용(service_role)으로 유지한다.
+-- Storage bucket 'assignment-files'는 Storage API 또는 Dashboard에서 private으로 생성한다.
+-- 객체 경로는 `${auth.uid()}/...` 형식을 강제한다.
 create policy "assignment_files_select_own" on storage.objects for select to authenticated
 using (bucket_id = 'assignment-files' and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy "assignment_files_insert_own" on storage.objects for insert to authenticated
