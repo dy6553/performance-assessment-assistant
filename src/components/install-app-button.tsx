@@ -82,7 +82,7 @@ export function InstallAppButton() {
         className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 active:scale-[0.98]"
         aria-label="수행평가 도우미 앱 설치"
       >
-        {installPrompt ? "앱 화면에 설치" : "앱 설치"}
+        {samsungInternet ? "앱스 화면에 설치" : installPrompt ? "앱 설치 가능" : "앱 설치"}
       </button>
 
       {helpOpen ? (
@@ -99,19 +99,25 @@ export function InstallAppButton() {
             onClick={(event) => event.stopPropagation()}
           >
             <h2 id="install-help-title" className="text-xl font-black">
-              {samsungInternet ? "삼성 인터넷에서 앱 설치" : "실제 앱으로 설치하기"}
+              {samsungInternet ? "삼성 인터넷에서 앱스 화면에 설치" : "실제 앱으로 설치하기"}
             </h2>
 
             {samsungInternet ? (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  삼성 인터넷이 아직 PWA 설치 버튼을 제공하지 않은 상태입니다. 설치 가능 판정이 나면 이 버튼이 <strong>앱 화면에 설치</strong>로 바뀌고 삼성 인터넷의 설치 창이 열립니다.
+                  삼성 인터넷에서는 <strong>beforeinstallprompt</strong> 이벤트가 없어도 브라우저 자체 설치 메뉴로 PWA를 앱스 화면에 설치할 수 있습니다.
                 </p>
+                <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
+                  <li>삼성 인터넷 오른쪽 아래 <strong>메뉴(≡ 또는 ⋮)</strong>를 누릅니다.</li>
+                  <li><strong>현재 페이지 추가</strong>를 선택합니다.</li>
+                  <li><strong>앱스 화면</strong>을 선택합니다.</li>
+                  <li><strong>추가/설치</strong>를 눌러 완료합니다.</li>
+                </ol>
                 <div className="mt-4 rounded-2xl bg-violet-50 p-4 text-sm leading-6 text-violet-950">
-                  시험온처럼 설치하려면 삼성 인터넷 상단에 설치 아이콘이 나타났을 때 눌러 <strong>앱 화면에 설치</strong>를 선택하세요.
+                  주소창에 내려받기/설치 아이콘이 보이면 그 아이콘을 눌러 <strong>앱스 화면에 설치</strong>를 선택해도 됩니다.
                 </div>
                 <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-                  <strong>홈 화면 바로가기</strong>로 추가하는 방식은 사용하지 마세요. 브라우저 배지가 붙은 바로가기가 될 수 있습니다.
+                  <strong>홈 화면</strong>은 선택하지 마세요. 홈 화면 바로가기는 브라우저 배지가 붙을 수 있습니다.
                 </div>
               </>
             ) : (
