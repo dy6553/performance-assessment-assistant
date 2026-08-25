@@ -30,10 +30,25 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
-const serviceWorkerBootScript =
+const pwaBootScript =
   process.env.NODE_ENV === "production"
     ? `
 (function () {
+  window.__pwaInstallPrompt = window.__pwaInstallPrompt || null;
+
+  window.addEventListener("beforeinstallprompt", function (event) {
+    // Capture the event before React hydration. Some Chromium-based browsers can
+    // emit it before client components have mounted.
+    event.preventDefault();
+    window.__pwaInstallPrompt = event;
+    window.dispatchEvent(new Event("pwa-install-prompt-ready"));
+  });
+
+  window.addEventListener("appinstalled", function () {
+    window.__pwaInstallPrompt = null;
+    window.dispatchEvent(new Event("pwa-app-installed"));
+  });
+
   if (!("serviceWorker" in navigator)) return;
 
   navigator.serviceWorker
@@ -52,8 +67,8 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="ko">
       <head>
-        {serviceWorkerBootScript ? (
-          <script dangerouslySetInnerHTML={{ __html: serviceWorkerBootScript }} />
+        {pwaBootScript ? (
+          <script dangerouslySetInnerHTML={{ __html: pwaBootScript }} />
         ) : null}
       </head>
       <body>{children}</body>
