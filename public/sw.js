@@ -1,4 +1,4 @@
-const CACHE_NAME = "performance-helper-shell-v4";
+const CACHE_NAME = "performance-helper-shell-v5";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -8,7 +8,13 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await Promise.allSettled(
+        APP_SHELL.map((url) => cache.add(new Request(url, { cache: "reload" }))),
+      );
+    }),
+  );
   self.skipWaiting();
 });
 
@@ -30,6 +36,14 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (event.request.mode === "navigate") {
-    event.respondWith(fetch(event.request).catch(() => caches.match("/")));
+    event.respondWith(
+      fetch(event.request).catch(async () => {
+        const cachedPage = await caches.match(event.request);
+        if (cachedPage) return cachedPage;
+
+        const cachedShell = await caches.match("/");
+        return cachedShell ?? Response.error();
+      }),
+    );
   }
 });

@@ -16,6 +16,10 @@ type NavigatorWithStandalone = Navigator & {
   standalone?: boolean;
 };
 
+type InstallPromptWindow = Window & {
+  __pwaInstallPrompt?: BeforeInstallPromptEvent | null;
+};
+
 function isStandalone() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
@@ -27,52 +31,96 @@ function isSamsungInternet() {
   return /SamsungBrowser\//i.test(navigator.userAgent);
 }
 
+function isIos() {
+  return /iPad|iPhone|iPod/i.test(navigator.userAgent);
+}
+
+function getStoredInstallPrompt() {
+  return (window as InstallPromptWindow).__pwaInstallPrompt ?? null;
+}
+
+function clearStoredInstallPrompt() {
+  (window as InstallPromptWindow).__pwaInstallPrompt = null;
+}
+
 export function InstallAppButton() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [samsungInternet, setSamsungInternet] = useState(false);
+  const [ios, setIos] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     setInstalled(isStandalone());
     setSamsungInternet(isSamsungInternet());
+    setIos(isIos());
+
+    const syncStoredPrompt = () => {
+      const storedPrompt = getStoredInstallPrompt();
+      if (storedPrompt) {
+        setInstallPrompt(storedPrompt);
+      }
+    };
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
-      setInstallPrompt(event as BeforeInstallPromptEvent);
+      const promptEvent = event as BeforeInstallPromptEvent;
+      (window as InstallPromptWindow).__pwaInstallPrompt = promptEvent;
+      setInstallPrompt(promptEvent);
     };
 
     const onInstalled = () => {
+      clearStoredInstallPrompt();
       setInstalled(true);
       setInstallPrompt(null);
       setHelpOpen(false);
     };
 
+    syncStoredPrompt();
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("pwa-install-prompt-ready", syncStoredPrompt);
     window.addEventListener("appinstalled", onInstalled);
+    window.addEventListener("pwa-app-installed", onInstalled);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("pwa-install-prompt-ready", syncStoredPrompt);
       window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener("pwa-app-installed", onInstalled);
     };
   }, []);
 
   if (installed) return null;
 
   const requestInstall = async () => {
-    if (!installPrompt) {
+    const promptEvent = installPrompt ?? getStoredInstallPrompt();
+
+    if (!promptEvent) {
       setHelpOpen(true);
       return;
     }
 
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    setInstallPrompt(null);
+    try {
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      clearStoredInstallPrompt();
+      setInstallPrompt(null);
 
-    if (choice.outcome === "accepted") {
-      setHelpOpen(false);
+      if (choice.outcome === "accepted") {
+        setHelpOpen(false);
+      }
+    } catch {
+      setHelpOpen(true);
     }
   };
+
+  const buttonLabel = installPrompt
+    ? "앱 설치"
+    : ios
+      ? "홈 화면에 추가"
+      : samsungInternet
+        ? "앱 설치 방법"
+        : "앱 설치";
 
   return (
     <>
@@ -82,7 +130,7 @@ export function InstallAppButton() {
         className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 active:scale-[0.98]"
         aria-label="수행평가 도우미 앱 설치"
       >
-        {samsungInternet ? "앱스 화면에 설치" : installPrompt ? "앱 설치 가능" : "앱 설치"}
+        {buttonLabel}
       </button>
 
       {helpOpen ? (
@@ -99,31 +147,43 @@ export function InstallAppButton() {
             onClick={(event) => event.stopPropagation()}
           >
             <h2 id="install-help-title" className="text-xl font-black">
-              {samsungInternet ? "삼성 인터넷에서 앱스 화면에 설치" : "실제 앱으로 설치하기"}
+              {ios
+                ? "iPhone/iPad에 설치"
+                : samsungInternet
+                  ? "삼성 인터넷에서 설치"
+                  : "수행평가 도우미 설치"}
             </h2>
 
-            {samsungInternet ? (
+            {ios ? (
+              <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
+                <li>Safari의 <strong>공유</strong> 버튼을 누릅니다.</li>
+                <li><strong>홈 화면에 추가</strong>를 선택합니다.</li>
+                <li>오른쪽 위 <strong>추가</strong>를 눌러 완료합니다.</li>
+              </ol>
+            ) : samsungInternet ? (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  삼성 인터넷에서는 <strong>beforeinstallprompt</strong> 이벤트가 없어도 브라우저 자체 설치 메뉴로 PWA를 앱스 화면에 설치할 수 있습니다.
+                  삼성 인터넷은 버전에 따라 웹페이지의 <strong>beforeinstallprompt</strong> 이벤트를 제공하지 않을 수 있습니다. 이 경우 브라우저 자체 메뉴에서 설치해야 합니다.
                 </p>
                 <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
-                  <li>삼성 인터넷 오른쪽 아래 <strong>메뉴(≡ 또는 ⋮)</strong>를 누릅니다.</li>
-                  <li><strong>현재 페이지 추가</strong>를 선택합니다.</li>
-                  <li><strong>앱스 화면</strong>을 선택합니다.</li>
+                  <li>삼성 인터넷의 <strong>메뉴</strong>를 엽니다.</li>
+                  <li><strong>현재 페이지 추가</strong> 또는 <strong>앱 설치</strong> 항목을 찾습니다.</li>
+                  <li><strong>앱스 화면</strong> 또는 설치 항목을 선택합니다.</li>
                   <li><strong>추가/설치</strong>를 눌러 완료합니다.</li>
                 </ol>
                 <div className="mt-4 rounded-2xl bg-violet-50 p-4 text-sm leading-6 text-violet-950">
-                  주소창에 내려받기/설치 아이콘이 보이면 그 아이콘을 눌러 <strong>앱스 화면에 설치</strong>를 선택해도 됩니다.
-                </div>
-                <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-                  <strong>홈 화면</strong>은 선택하지 마세요. 홈 화면 바로가기는 브라우저 배지가 붙을 수 있습니다.
+                  주소창에 설치 아이콘이 표시되면 그 아이콘을 눌러도 됩니다.
                 </div>
               </>
             ) : (
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                브라우저가 아직 네이티브 PWA 설치 이벤트를 제공하지 않고 있습니다. 설치 가능한 상태가 되면 이 버튼에서 시스템 설치창을 열 수 있습니다.
-              </p>
+              <>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  브라우저가 아직 설치 이벤트를 보내지 않았습니다. 페이지를 새로고침한 뒤 다시 시도하거나 브라우저 메뉴의 <strong>앱 설치</strong> 또는 <strong>홈 화면에 추가</strong>를 선택하세요.
+                </p>
+                <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+                  설치 항목 자체가 보이지 않으면 <strong>/pwa-debug</strong>에서 Manifest와 Service Worker 상태를 확인할 수 있습니다.
+                </div>
+              </>
             )}
 
             <button

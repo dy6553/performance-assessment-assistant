@@ -32,9 +32,31 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
+const installPromptCaptureScript = `
+(function () {
+  if (window.__pwaInstallCaptureReady) return;
+  window.__pwaInstallCaptureReady = true;
+  window.__pwaInstallPrompt = window.__pwaInstallPrompt || null;
+
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    window.__pwaInstallPrompt = event;
+    window.dispatchEvent(new Event("pwa-install-prompt-ready"));
+  });
+
+  window.addEventListener("appinstalled", function () {
+    window.__pwaInstallPrompt = null;
+    window.dispatchEvent(new Event("pwa-app-installed"));
+  });
+})();
+`;
+
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="ko">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: installPromptCaptureScript }} />
+      </head>
       <body>
         <ServiceWorkerRegister />
         {children}
