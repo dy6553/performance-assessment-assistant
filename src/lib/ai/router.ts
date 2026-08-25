@@ -76,8 +76,7 @@ export async function routeModel({
     throw new Error("현재 NVIDIA API에서 사용 가능한 승인 모델이 없습니다.");
   }
 
-  const preferHigh =
-    task !== "task_parser" || inputCharacters > 24_000;
+  const preferHigh = task !== "task_parser" || inputCharacters > 24_000;
 
   const ranked = [...candidates].sort((a, b) => {
     const aAffinity = a.taskAffinity.includes(task) ? 1 : 0;
@@ -106,7 +105,7 @@ export async function routeModel({
         ? "정확도 우선 작업이라 고품질 tier와 task affinity를 우선했습니다."
         : "구조화 분석 작업이라 검증된 효율 tier를 우선했습니다.",
       availability.live
-        ? "NVIDIA 실시간 모델 카탈로그와 교집합을 확인했습니다."
+        ? "NVIDIA 실시간 모델 카탈로그와 교집합을 확인했고 새 모델은 검증 대기 후보로 자동 동기화했습니다."
         : "실시간 카탈로그 확인 실패 시 DB의 사전 승인 Registry만 사용했습니다.",
     ].join(" "),
     registryPolicy: "hard-filtered",
@@ -118,12 +117,7 @@ export async function routeModel({
 async function loadApprovedRegistry(now = Date.now()): Promise<ModelRecord[]> {
   if (registryCache && registryCache.expiresAt > now) return registryCache.records;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
-  if (!supabaseUrl || !secretKey) {
-    throw new Error("Supabase Model Registry 연결 환경변수가 설정되지 않았습니다.");
-  }
-
+  const { supabaseUrl, secretKey } = readRegistryConfig();
   const query = new URLSearchParams({
     select: [
       "model_id",
@@ -149,7 +143,7 @@ async function loadApprovedRegistry(now = Date.now()): Promise<ModelRecord[]> {
     deprecated: "eq.false",
   });
 
-  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/model_registry?${query}`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/model_registry?${query}`, {
     headers: {
       apikey: secretKey,
       Accept: "application/json",
@@ -201,9 +195,10 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
 
   const evaluation = isRecord(row.evaluation_profile_json) ? row.evaluation_profile_json : {};
   const quality: QualityTier = evaluation.qualityTier === "high" ? "high" : "efficient";
-  const priority = typeof evaluation.priority === "number" && Number.isFinite(evaluation.priority)
-    ? evaluation.priority
-    : 0;
+  const priority =
+    typeof evaluation.priority === "number" && Number.isFinite(evaluation.priority)
+      ? evaluation.priority
+      : 0;
   const taskAffinity = Array.isArray(evaluation.taskAffinity)
     ? evaluation.taskAffinity.filter(isAgentTask)
     : [];
@@ -266,12 +261,17 @@ async function getAvailableApprovedModels(
     if (!response.ok) throw new Error("catalog unavailable");
 
     const payload = (await response.json()) as { data?: Array<{ id?: unknown }> };
-    const liveIds = new Set(
-      (payload.data ?? [])
-        .map((item) => (typeof item.id === "string" ? item.id.trim() : ""))
-        .filter((id) => approvedIds.has(id)),
+    const catalogIds = Array.from(
+      new Set(
+        (payload.data ?? [])
+          .map((item) => (typeof item.id === "string" ? item.id.trim() : ""))
+          .filter(Boolean),
+      ),
     );
 
+    await syncCatalogCandidates(catalogIds);
+
+    const liveIds = new Set(catalogIds.filter((id) => approvedIds.has(id)));
     availabilityCache = {
       ids: liveIds,
       expiresAt: now + 60 * 60 * 1_000,
@@ -286,4 +286,41 @@ async function getAvailableApprovedModels(
   }
 
   return availabilityCache;
+}
+
+async function syncCatalogCandidates(catalogIds: readonly string[]): Promise<void> {
+  if (!catalogIds.length) return;
+
+  try {
+    const { supabaseUrl, secretKey } = readRegistryConfig();
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/sync_nvidia_model_catalog`, {
+      method: "POST",
+      headers: {
+        apikey: secretKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        catalog_model_ids: catalogIds,
+        observed_at: new Date().toISOString(),
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!response.ok) {
+      console.warn(`NVIDIA 후보 모델 동기화 실패: SUPABASE_${response.status}`);
+    }
+  } catch {
+    console.warn("NVIDIA 후보 모델 동기화를 완료하지 못했습니다.");
+  }
+}
+
+function readRegistryConfig(): { supabaseUrl: string; secretKey: string } {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/$/, "");
+  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
+  if (!supabaseUrl || !secretKey) {
+    throw new Error("Supabase Model Registry 연결 환경변수가 설정되지 않았습니다.");
+  }
+  return { supabaseUrl, secretKey };
 }
