@@ -12,6 +12,14 @@ type BeforeInstallPromptEvent = Event & {
   prompt?: () => Promise<unknown>;
 };
 
+type InstallPromptWindow = Window & {
+  __pwaInstallPrompt?: BeforeInstallPromptEvent | null;
+};
+
+type NavigatorWithStandalone = Navigator & {
+  standalone?: boolean;
+};
+
 export default function PwaDebugPage() {
   const [checks, setChecks] = useState<Check[]>([
     { label: "진단 준비", value: "확인 중…", ok: null },
@@ -23,15 +31,22 @@ export default function PwaDebugPage() {
     let active = true;
     const isSamsung = /SamsungBrowser\//i.test(navigator.userAgent);
     setSamsungInternet(isSamsung);
+    setPromptSeen(Boolean((window as InstallPromptWindow).__pwaInstallPrompt));
 
     const onBeforeInstallPrompt = (event: Event) => {
       const installEvent = event as BeforeInstallPromptEvent;
       if (typeof installEvent.prompt === "function") {
+        (window as InstallPromptWindow).__pwaInstallPrompt = installEvent;
         setPromptSeen(true);
       }
     };
 
+    const syncStoredPrompt = () => {
+      setPromptSeen(Boolean((window as InstallPromptWindow).__pwaInstallPrompt));
+    };
+
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("pwa-install-prompt-ready", syncStoredPrompt);
 
     void (async () => {
       const next: Check[] = [];
@@ -75,27 +90,36 @@ export default function PwaDebugPage() {
           name?: string;
           short_name?: string;
           start_url?: string;
+          scope?: string;
           display?: string;
-          icons?: Array<{ sizes?: string; src?: string }>;
+          prefer_related_applications?: boolean;
+          icons?: Array<{ sizes?: string; src?: string; purpose?: string }>;
         };
         next.push({ label: "Manifest HTTP", value: `${response.status} · ${contentType}`, ok: response.ok && contentType.includes("manifest") });
         next.push({ label: "name / short_name", value: manifest.name ?? manifest.short_name ?? "없음", ok: Boolean(manifest.name || manifest.short_name) });
         next.push({ label: "start_url", value: manifest.start_url ?? "없음", ok: Boolean(manifest.start_url) });
+        next.push({ label: "scope", value: manifest.scope ?? "없음", ok: Boolean(manifest.scope) });
         next.push({ label: "display", value: manifest.display ?? "없음", ok: manifest.display === "standalone" || manifest.display === "fullscreen" });
-        const hasLargeIcon = Boolean(
-          manifest.icons?.some((icon) => {
-            const match = icon.sizes?.match(/^(\d+)x(\d+)$/);
-            return match ? Number(match[1]) >= 144 && Number(match[2]) >= 144 : false;
-          }),
-        );
-        next.push({ label: "144px 이상 아이콘", value: hasLargeIcon ? "있음" : "없음", ok: hasLargeIcon });
+
+        const has192Icon = Boolean(manifest.icons?.some((icon) => icon.sizes === "192x192"));
+        const has512Icon = Boolean(manifest.icons?.some((icon) => icon.sizes === "512x512"));
+        next.push({ label: "192×192 아이콘", value: has192Icon ? "있음" : "없음", ok: has192Icon });
+        next.push({ label: "512×512 아이콘", value: has512Icon ? "있음" : "없음", ok: has512Icon });
+        next.push({
+          label: "웹앱 직접 설치 우선",
+          value: manifest.prefer_related_applications === true ? "앱스토어 우선" : "웹앱 설치 우선",
+          ok: manifest.prefer_related_applications !== true,
+        });
       } catch (error) {
         next.push({ label: "Manifest 읽기", value: error instanceof Error ? error.message : "읽기 실패", ok: false });
       }
 
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        Boolean((navigator as NavigatorWithStandalone).standalone);
       next.push({
         label: "standalone 실행 상태",
-        value: window.matchMedia("(display-mode: standalone)").matches ? "설치 앱으로 실행 중" : "브라우저 탭",
+        value: standalone ? "설치 앱으로 실행 중" : "브라우저 탭",
         ok: null,
       });
       next.push({ label: "User Agent", value: navigator.userAgent, ok: null });
@@ -103,7 +127,7 @@ export default function PwaDebugPage() {
       if (isSamsung) {
         next.push({
           label: "삼성 인터넷 설치 경로",
-          value: "메뉴 → 현재 페이지 추가 → 앱스 화면",
+          value: "메뉴 → 현재 페이지 추가/앱 설치 → 앱스 화면",
           ok: true,
         });
       }
@@ -114,6 +138,7 @@ export default function PwaDebugPage() {
     return () => {
       active = false;
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("pwa-install-prompt-ready", syncStoredPrompt);
     };
   }, []);
 
@@ -140,14 +165,14 @@ export default function PwaDebugPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <p className="font-black">beforeinstallprompt</p>
-            <span className="text-lg" aria-hidden="true">{promptSeen ? "✅" : samsungInternet ? "•" : "❌"}</span>
+            <span className="text-lg" aria-hidden="true">{promptSeen ? "✅" : "•"}</span>
           </div>
           <p className="mt-1 text-sm leading-6 text-slate-600">
             {promptSeen
-              ? "브라우저가 웹 페이지에 네이티브 설치 이벤트를 보냈습니다."
+              ? "브라우저가 설치 이벤트를 보냈고, 앱의 설치 버튼에서 사용할 수 있도록 보관 중입니다."
               : samsungInternet
-                ? "삼성 인터넷에서는 이 이벤트가 없어도 브라우저의 설치 아이콘 또는 메뉴 → 현재 페이지 추가 → 앱스 화면 경로로 PWA를 설치할 수 있습니다."
-                : "현재 세션에서는 설치 가능 이벤트가 감지되지 않았습니다."}
+                ? "삼성 인터넷은 버전에 따라 이 이벤트를 보내지 않을 수 있습니다. 이벤트가 없어도 브라우저 메뉴의 설치 경로를 사용할 수 있습니다."
+                : "현재 세션에서 설치 이벤트를 아직 받지 못했습니다. 이 항목만으로 PWA 구성이 잘못됐다고 판단하지는 않습니다."}
           </p>
         </section>
       </div>
