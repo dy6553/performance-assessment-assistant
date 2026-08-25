@@ -27,9 +27,10 @@ NVIDIA_API_KEY=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
+CRON_SECRET=
 ```
 
-`SUPABASE_SECRET_KEY`와 `NVIDIA_API_KEY`는 서버 전용입니다. 비밀 키에는 `NEXT_PUBLIC_` 접두사를 붙이지 않습니다.
+`SUPABASE_SECRET_KEY`, `NVIDIA_API_KEY`, `CRON_SECRET`는 서버 전용입니다. 비밀 키에는 `NEXT_PUBLIC_` 접두사를 붙이지 않습니다.
 
 ## AI Router
 
@@ -44,7 +45,14 @@ SUPABASE_SECRET_KEY=
 - `production_approved = true`
 - NVIDIA 실시간 모델 카탈로그와 가용성 교차 확인
 
-새 모델은 Registry에 후보로 등록할 수 있지만 내부 평가와 검토를 통과하기 전에는 production 후보가 되지 않습니다.
+### 자동 후보 탐색
+
+- AI 요청이 들어오면 NVIDIA `/models` 카탈로그를 최대 1시간 캐시로 다시 확인합니다.
+- Vercel Cron이 하루 1회 `/api/internal/model-catalog/sync`를 호출해 사용자가 없어도 후보 목록을 갱신합니다.
+- 새 모델 ID가 발견되면 Supabase `model_registry`에 `candidate_requires_review` 상태로 자동 등록합니다.
+- 자동 등록 후보는 `enabled = false`, `approved_model = false`, `production_approved = false` 상태이므로 Router가 절대 실사용하지 않습니다.
+- 기존 모델이 카탈로그에서 사라지면 `catalog_available = false`로 추적합니다.
+- 개발사/국가, 중국계 여부, 학생 데이터 정책, 개인정보·보안 검토와 내부 성능 평가를 통과한 뒤에만 production 승인할 수 있습니다.
 
 ## MVP
 
