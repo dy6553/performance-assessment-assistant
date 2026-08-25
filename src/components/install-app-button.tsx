@@ -23,13 +23,19 @@ function isStandalone() {
   );
 }
 
+function isSamsungInternet() {
+  return /SamsungBrowser\//i.test(navigator.userAgent);
+}
+
 export function InstallAppButton() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
+  const [samsungInternet, setSamsungInternet] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     setInstalled(isStandalone());
+    setSamsungInternet(isSamsungInternet());
 
     const onBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -76,7 +82,7 @@ export function InstallAppButton() {
         className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 active:scale-[0.98]"
         aria-label="수행평가 도우미 앱 설치"
       >
-        {installPrompt ? "앱 설치 가능" : "앱 설치"}
+        {installPrompt ? "앱 화면에 설치" : "앱 설치"}
       </button>
 
       {helpOpen ? (
@@ -93,23 +99,27 @@ export function InstallAppButton() {
             onClick={(event) => event.stopPropagation()}
           >
             <h2 id="install-help-title" className="text-xl font-black">
-              실제 앱으로 설치하기
+              {samsungInternet ? "삼성 인터넷에서 앱 설치" : "실제 앱으로 설치하기"}
             </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              지금은 브라우저가 네이티브 PWA 설치 이벤트를 아직 제공하지 않고 있습니다.
-            </p>
-            <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-              <strong>중요:</strong> 메뉴의 <strong>홈 화면에 추가</strong>만 사용하면 Chrome 배지가 붙은 웹 바로가기가 만들어질 수 있습니다. 시험온처럼 설치하려면 <strong>앱 설치</strong> 또는 이 버튼이 <strong>앱 설치 가능</strong>으로 바뀐 뒤 설치해 주세요.
-            </div>
-            <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
-              <li>현재 홈 화면의 <strong>수행도우미</strong> 바로가기를 삭제합니다.</li>
-              <li>이 사이트를 브라우저에서 다시 열고 잠시 사용합니다.</li>
-              <li>이 버튼이 <strong>앱 설치 가능</strong>으로 바뀌면 눌러 설치합니다.</li>
-              <li>브라우저 메뉴에 <strong>앱 설치</strong>가 별도로 보이면 그 메뉴를 사용해도 됩니다.</li>
-            </ol>
-            <p className="mt-4 text-xs leading-5 text-slate-500">
-              실제 PWA 앱으로 설치되면 브라우저 배지 없이 앱 서랍에 별도 앱으로 표시됩니다.
-            </p>
+
+            {samsungInternet ? (
+              <>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  삼성 인터넷이 아직 PWA 설치 버튼을 제공하지 않은 상태입니다. 설치 가능 판정이 나면 이 버튼이 <strong>앱 화면에 설치</strong>로 바뀌고 삼성 인터넷의 설치 창이 열립니다.
+                </p>
+                <div className="mt-4 rounded-2xl bg-violet-50 p-4 text-sm leading-6 text-violet-950">
+                  시험온처럼 설치하려면 삼성 인터넷 상단에 설치 아이콘이 나타났을 때 눌러 <strong>앱 화면에 설치</strong>를 선택하세요.
+                </div>
+                <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+                  <strong>홈 화면 바로가기</strong>로 추가하는 방식은 사용하지 마세요. 브라우저 배지가 붙은 바로가기가 될 수 있습니다.
+                </div>
+              </>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                브라우저가 아직 네이티브 PWA 설치 이벤트를 제공하지 않고 있습니다. 설치 가능한 상태가 되면 이 버튼에서 시스템 설치창을 열 수 있습니다.
+              </p>
+            )}
+
             <button
               type="button"
               className="mt-5 min-h-11 w-full rounded-xl bg-violet-600 px-4 font-black text-white transition hover:bg-violet-700 active:scale-[0.99]"
