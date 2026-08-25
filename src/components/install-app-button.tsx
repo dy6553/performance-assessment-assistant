@@ -76,7 +76,7 @@ export function InstallAppButton() {
         className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 active:scale-[0.98]"
         aria-label="수행평가 도우미 앱 설치"
       >
-        앱 설치
+        {installPrompt ? "앱 설치 가능" : "앱 설치"}
       </button>
 
       {helpOpen ? (
@@ -93,19 +93,22 @@ export function InstallAppButton() {
             onClick={(event) => event.stopPropagation()}
           >
             <h2 id="install-help-title" className="text-xl font-black">
-              수행평가 도우미 설치
+              실제 앱으로 설치하기
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              브라우저가 아직 자동 설치 창을 제공하지 않고 있습니다.
+              지금은 브라우저가 네이티브 PWA 설치 이벤트를 아직 제공하지 않고 있습니다.
             </p>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              <strong>삼성 인터넷:</strong> 오른쪽 아래 메뉴(⋮) → 현재 페이지 추가 → 홈 화면을 선택해 주세요.
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              <strong>Chrome:</strong> 오른쪽 위 메뉴(⋮) → 앱 설치 또는 홈 화면에 추가를 선택해 주세요.
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              <strong>iPhone Safari:</strong> 공유 → 홈 화면에 추가를 선택해 주세요.
+            <div className="mt-4 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+              <strong>중요:</strong> 메뉴의 <strong>홈 화면에 추가</strong>만 사용하면 Chrome 배지가 붙은 웹 바로가기가 만들어질 수 있습니다. 시험온처럼 설치하려면 <strong>앱 설치</strong> 또는 이 버튼이 <strong>앱 설치 가능</strong>으로 바뀐 뒤 설치해 주세요.
+            </div>
+            <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
+              <li>현재 홈 화면의 <strong>수행도우미</strong> 바로가기를 삭제합니다.</li>
+              <li>이 사이트를 브라우저에서 다시 열고 잠시 사용합니다.</li>
+              <li>이 버튼이 <strong>앱 설치 가능</strong>으로 바뀌면 눌러 설치합니다.</li>
+              <li>브라우저 메뉴에 <strong>앱 설치</strong>가 별도로 보이면 그 메뉴를 사용해도 됩니다.</li>
+            </ol>
+            <p className="mt-4 text-xs leading-5 text-slate-500">
+              실제 PWA 앱으로 설치되면 브라우저 배지 없이 앱 서랍에 별도 앱으로 표시됩니다.
             </p>
             <button
               type="button"
