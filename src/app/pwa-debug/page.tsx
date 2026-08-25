@@ -17,9 +17,12 @@ export default function PwaDebugPage() {
     { label: "진단 준비", value: "확인 중…", ok: null },
   ]);
   const [promptSeen, setPromptSeen] = useState(false);
+  const [samsungInternet, setSamsungInternet] = useState(false);
 
   useEffect(() => {
     let active = true;
+    const isSamsung = /SamsungBrowser\//i.test(navigator.userAgent);
+    setSamsungInternet(isSamsung);
 
     const onBeforeInstallPrompt = (event: Event) => {
       const installEvent = event as BeforeInstallPromptEvent;
@@ -97,6 +100,14 @@ export default function PwaDebugPage() {
       });
       next.push({ label: "User Agent", value: navigator.userAgent, ok: null });
 
+      if (isSamsung) {
+        next.push({
+          label: "삼성 인터넷 설치 경로",
+          value: "메뉴 → 현재 페이지 추가 → 앱스 화면",
+          ok: true,
+        });
+      }
+
       if (active) setChecks(next);
     })();
 
@@ -110,7 +121,7 @@ export default function PwaDebugPage() {
     <main className="mx-auto min-h-screen max-w-2xl px-4 py-8 text-slate-950">
       <h1 className="text-3xl font-black">PWA 설치 진단</h1>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        이 화면은 삼성 인터넷이 수행평가 도우미를 설치 가능한 앱으로 인식하지 않는 원인을 확인하기 위한 임시 진단 페이지입니다.
+        이 화면은 수행평가 도우미의 PWA 구성과 브라우저 설치 상태를 확인합니다.
       </p>
 
       <div className="mt-6 space-y-3">
@@ -129,10 +140,14 @@ export default function PwaDebugPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <p className="font-black">beforeinstallprompt</p>
-            <span className="text-lg" aria-hidden="true">{promptSeen ? "✅" : "❌"}</span>
+            <span className="text-lg" aria-hidden="true">{promptSeen ? "✅" : samsungInternet ? "•" : "❌"}</span>
           </div>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            {promptSeen ? "브라우저가 설치 가능 이벤트를 보냈습니다." : "현재 세션에서는 설치 가능 이벤트가 감지되지 않았습니다."}
+            {promptSeen
+              ? "브라우저가 웹 페이지에 네이티브 설치 이벤트를 보냈습니다."
+              : samsungInternet
+                ? "삼성 인터넷에서는 이 이벤트가 없어도 브라우저의 설치 아이콘 또는 메뉴 → 현재 페이지 추가 → 앱스 화면 경로로 PWA를 설치할 수 있습니다."
+                : "현재 세션에서는 설치 가능 이벤트가 감지되지 않았습니다."}
           </p>
         </section>
       </div>
