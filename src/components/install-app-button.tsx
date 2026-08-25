@@ -16,6 +16,10 @@ type NavigatorWithStandalone = Navigator & {
   standalone?: boolean;
 };
 
+type WindowWithPwaInstallPrompt = Window & {
+  __pwaInstallPrompt?: BeforeInstallPromptEvent | null;
+};
+
 function isStandalone() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
@@ -31,6 +35,14 @@ function isIos() {
   return /iPad|iPhone|iPod/i.test(navigator.userAgent);
 }
 
+function getStoredInstallPrompt() {
+  return (window as WindowWithPwaInstallPrompt).__pwaInstallPrompt ?? null;
+}
+
+function clearStoredInstallPrompt() {
+  (window as WindowWithPwaInstallPrompt).__pwaInstallPrompt = null;
+}
+
 export function InstallAppButton() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
@@ -39,50 +51,56 @@ export function InstallAppButton() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
-    const samsung = isSamsungInternet();
-
     setInstalled(isStandalone());
-    setSamsungInternet(samsung);
+    setSamsungInternet(isSamsungInternet());
     setIos(isIos());
+    setInstallPrompt(getStoredInstallPrompt());
 
     const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
       const promptEvent = event as BeforeInstallPromptEvent;
-
-      // Samsung Internet uses its own install indication in the browser UI.
-      // Do not cancel the event there, because that can suppress native install promotion.
-      if (!samsung) {
-        event.preventDefault();
-      }
-
+      (window as WindowWithPwaInstallPrompt).__pwaInstallPrompt = promptEvent;
       setInstallPrompt(promptEvent);
     };
 
+    const onPromptReady = () => {
+      setInstallPrompt(getStoredInstallPrompt());
+    };
+
     const onInstalled = () => {
+      clearStoredInstallPrompt();
       setInstalled(true);
       setInstallPrompt(null);
       setHelpOpen(false);
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("pwa-install-prompt-ready", onPromptReady);
     window.addEventListener("appinstalled", onInstalled);
+    window.addEventListener("pwa-app-installed", onInstalled);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("pwa-install-prompt-ready", onPromptReady);
       window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener("pwa-app-installed", onInstalled);
     };
   }, []);
 
   if (installed) return null;
 
   const requestInstall = async () => {
-    if (!installPrompt) {
+    const prompt = installPrompt ?? getStoredInstallPrompt();
+
+    if (!prompt) {
       setHelpOpen(true);
       return;
     }
 
     try {
-      await installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      clearStoredInstallPrompt();
       setInstallPrompt(null);
 
       if (choice.outcome === "accepted") {
@@ -142,19 +160,19 @@ export function InstallAppButton() {
             ) : samsungInternet ? (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  삼성 인터넷의 기본 설치 표시를 웹페이지가 막지 않도록 수정했습니다. 주소창의 설치 아이콘 또는 브라우저 메뉴의 설치 항목을 사용하세요.
+                  설치 이벤트를 페이지 로딩 초기에 저장하도록 보강했습니다. 잠시 사용한 뒤 버튼이 <strong>앱 설치</strong>로 바뀌면 바로 눌러 설치할 수 있습니다.
                 </p>
                 <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
                   <li>페이지를 한 번 새로고침합니다.</li>
-                  <li>주소창에 설치 아이콘이 나타나는지 확인합니다.</li>
-                  <li>없으면 삼성 인터넷 <strong>메뉴</strong>에서 <strong>현재 페이지 추가</strong> 또는 <strong>앱 설치</strong>를 확인합니다.</li>
-                  <li>가능하면 <strong>앱스 화면</strong> 설치를 선택합니다.</li>
+                  <li>페이지를 한 번 탭하고 약 30초 정도 사용합니다.</li>
+                  <li>상단 버튼이 <strong>앱 설치</strong>로 바뀌면 눌러 설치합니다.</li>
+                  <li>계속 안 바뀌면 삼성 인터넷 <strong>현재 페이지 추가</strong> 안의 <strong>앱스 화면</strong> 항목을 확인합니다.</li>
                 </ol>
               </>
             ) : (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  브라우저가 아직 설치 이벤트를 보내지 않았습니다. 페이지를 새로고침한 뒤 다시 시도하거나 브라우저 메뉴의 <strong>앱 설치</strong> 또는 <strong>홈 화면에 추가</strong>를 선택하세요.
+                  브라우저가 아직 설치 이벤트를 보내지 않았습니다. 페이지를 새로고침하고 잠시 사용한 뒤 다시 시도하거나 브라우저 메뉴의 <strong>앱 설치</strong>를 확인하세요.
                 </p>
                 <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700">
                   설치 항목 자체가 보이지 않으면 <strong>/pwa-debug</strong>에서 Manifest와 Service Worker 상태를 확인할 수 있습니다.
