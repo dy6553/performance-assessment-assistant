@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
-import { ServiceWorkerRegister } from "@/components/service-worker-register";
-
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,13 +30,33 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
+const serviceWorkerBootScript =
+  process.env.NODE_ENV === "production"
+    ? `
+(function () {
+  if (!("serviceWorker" in navigator)) return;
+
+  navigator.serviceWorker
+    .register("/sw.js", { scope: "/", updateViaCache: "none" })
+    .then(function (registration) {
+      return registration.update();
+    })
+    .catch(function () {
+      // PWA installation diagnostics handle registration failures separately.
+    });
+})();
+`
+    : "";
+
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="ko">
-      <body>
-        <ServiceWorkerRegister />
-        {children}
-      </body>
+      <head>
+        {serviceWorkerBootScript ? (
+          <script dangerouslySetInnerHTML={{ __html: serviceWorkerBootScript }} />
+        ) : null}
+      </head>
+      <body>{children}</body>
     </html>
   );
 }
