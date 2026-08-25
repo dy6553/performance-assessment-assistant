@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const CONTROLLER_REFRESH_KEY = "performance-helper-pwa-controller-refresh";
+const CONTROLLER_REFRESH_KEY = "performance-helper-pwa-controller-refresh-v3";
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -24,7 +24,7 @@ export function ServiceWorkerRegister() {
 
     void (async () => {
       try {
-        const registration = await navigator.serviceWorker.register("/sw.js", {
+        const registration = await navigator.serviceWorker.register("/sw.js?v=3", {
           scope: "/",
           updateViaCache: "none",
         });
@@ -37,10 +37,6 @@ export function ServiceWorkerRegister() {
           return;
         }
 
-        // Some Chromium-based mobile browsers only surface their native PWA
-        // install badge after the active service worker controls the page.
-        // Refresh once after first registration so the installability check can
-        // run against a controlled page without creating a reload loop.
         try {
           if (sessionStorage.getItem(CONTROLLER_REFRESH_KEY) !== "1") {
             sessionStorage.setItem(CONTROLLER_REFRESH_KEY, "1");
