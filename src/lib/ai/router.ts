@@ -11,11 +11,11 @@ export type AgentTask =
 
 type ModelRecord = {
   id: string;
-  developer: "NVIDIA Corporation";
-  headquarters: "United States";
-  approved: true;
-  productionApproved: true;
-  chineseOriginExcluded: true;
+  developer: string;
+  headquarters: string;
+  approved: boolean;
+  productionApproved: boolean;
+  chineseOriginExcluded: boolean;
   capabilities: readonly string[];
   quality: "efficient" | "high";
 };
@@ -89,8 +89,7 @@ export async function routeModel({
 
   if (!selected) throw new Error("승인된 NVIDIA 모델 후보가 없습니다.");
 
-  const fallback =
-    candidates.find((model) => model.id !== selected.id)?.id ?? null;
+  const fallback = candidates.find((model) => model.id !== selected.id)?.id ?? null;
 
   return {
     model: selected.id,
@@ -114,7 +113,7 @@ function isEligible(record: ModelRecord): boolean {
     record.approved === true &&
     record.productionApproved === true &&
     record.chineseOriginExcluded === true &&
-    record.headquarters !== ("China" as never) &&
+    record.headquarters.trim().toLowerCase() !== "china" &&
     record.capabilities.includes("korean") &&
     record.capabilities.includes("structured_output")
   );
