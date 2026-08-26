@@ -30,15 +30,24 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
-// Samsung Internet's published PWA indication criteria require the page to
-// register a Service Worker. Register it from <head> so the browser can observe
-// the registration as early as possible. We deliberately do not intercept
-// beforeinstallprompt: Samsung Internet/Chrome keep control of their native
-// install indication and install UI.
-const samsungPwaBootScript =
+// Capture beforeinstallprompt before React hydrates so a fast browser install
+// event is not lost. The client install button reuses the stored event and calls
+// prompt() only after the user's click. Service Worker registration stays early
+// as well so Samsung Internet and Chromium can evaluate installability quickly.
+const pwaBootScript =
   process.env.NODE_ENV === "production"
     ? `
 (function () {
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    window.__pwaInstallPrompt = event;
+    window.dispatchEvent(new Event("pwa-install-prompt-ready"));
+  });
+
+  window.addEventListener("appinstalled", function () {
+    window.__pwaInstallPrompt = null;
+  });
+
   if (!("serviceWorker" in navigator)) return;
 
   navigator.serviceWorker
@@ -54,9 +63,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="ko">
       <head>
-        {samsungPwaBootScript ? (
-          <script dangerouslySetInnerHTML={{ __html: samsungPwaBootScript }} />
-        ) : null}
+        {pwaBootScript ? <script dangerouslySetInnerHTML={{ __html: pwaBootScript }} /> : null}
       </head>
       <body>{children}</body>
     </html>
