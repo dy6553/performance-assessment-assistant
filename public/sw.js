@@ -1,7 +1,6 @@
-const CACHE_NAME = "performance-helper-samsung-pwa-v1";
+const CACHE_NAME = "performance-helper-samsung-pwa-v2";
 const APP_SHELL = [
   "/",
-  "/manifest.webmanifest",
   "/icon.svg",
   "/apple-touch-icon.png",
   "/icons/icon-192.png",
@@ -39,6 +38,11 @@ self.addEventListener("fetch", (event) => {
   // Keep API/data requests out of the offline cache.
   if (url.pathname.startsWith("/api/")) return;
 
+  // The browser itself uses the web app manifest to decide installability.
+  // Never serve it from Cache Storage: repeated PWA deployments can otherwise
+  // leave Samsung Internet/Chrome evaluating an older manifest indefinitely.
+  if (url.pathname === "/manifest.webmanifest") return;
+
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
@@ -64,8 +68,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||
     url.pathname === "/icon.svg" ||
-    url.pathname === "/apple-touch-icon.png" ||
-    url.pathname === "/manifest.webmanifest";
+    url.pathname === "/apple-touch-icon.png";
 
   if (!isStaticAsset) return;
 
