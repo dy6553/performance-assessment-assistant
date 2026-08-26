@@ -115,11 +115,13 @@ export default function PwaDebugPage() {
   const [running, setRunning] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const runningRef = useRef(false);
   const promptSeenRef = useRef<number | null>(null);
   const appInstalledRef = useRef<number | null>(null);
 
   const runDiagnostics = useCallback(async () => {
-    if (running) return;
+    if (runningRef.current) return;
+    runningRef.current = true;
     setRunning(true);
     setCopied(false);
 
@@ -180,7 +182,7 @@ export default function PwaDebugPage() {
           registration = await navigator.serviceWorker.getRegistration("/");
 
           if (!registration) {
-            for (let attempt = 0; attempt < 40; attempt += 1) {
+            for (let attempt = 0; attempt < 16; attempt += 1) {
               await delay(250);
               registration = await navigator.serviceWorker.getRegistration("/");
               if (registration) break;
@@ -208,18 +210,18 @@ export default function PwaDebugPage() {
 
           next.push({
             label: "Service Worker 등록",
-            value: registration ? `등록됨 · scope ${registration.scope}` : "12초 동안 등록을 찾지 못함",
+            value: registration ? `등록됨 · scope ${registration.scope}` : "약 12초 동안 등록을 찾지 못함",
             ok: serviceWorkerRegistered,
           });
           next.push({
             label: "installing worker",
             value: describeWorker(registration?.installing),
-            ok: registration?.installing ? null : null,
+            ok: null,
           });
           next.push({
             label: "waiting worker",
             value: describeWorker(registration?.waiting),
-            ok: registration?.waiting ? null : null,
+            ok: null,
           });
           next.push({
             label: "active worker",
@@ -426,9 +428,10 @@ export default function PwaDebugPage() {
 
       setChecks(next);
     } finally {
+      runningRef.current = false;
       setRunning(false);
     }
-  }, [running]);
+  }, []);
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => {
