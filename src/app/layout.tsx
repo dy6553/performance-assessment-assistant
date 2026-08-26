@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
-import { ServiceWorkerRegister } from "@/components/service-worker-register";
-
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,13 +30,35 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
+// Samsung Internet's published PWA indication criteria require the page to
+// register a Service Worker. Register it from <head> so the browser can observe
+// the registration as early as possible. We deliberately do not intercept
+// beforeinstallprompt: Samsung Internet/Chrome keep control of their native
+// install indication and install UI.
+const samsungPwaBootScript =
+  process.env.NODE_ENV === "production"
+    ? `
+(function () {
+  if (!("serviceWorker" in navigator)) return;
+
+  navigator.serviceWorker
+    .register("/sw.js", { scope: "/", updateViaCache: "none" })
+    .catch(function () {
+      // /pwa-debug reports registration failures without blocking the app.
+    });
+})();
+`
+    : "";
+
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="ko">
-      <body>
-        <ServiceWorkerRegister />
-        {children}
-      </body>
+      <head>
+        {samsungPwaBootScript ? (
+          <script dangerouslySetInnerHTML={{ __html: samsungPwaBootScript }} />
+        ) : null}
+      </head>
+      <body>{children}</body>
     </html>
   );
 }
