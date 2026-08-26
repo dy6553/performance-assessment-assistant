@@ -47,25 +47,12 @@ export function InstallAppButton() {
     setInstalled(isStandalone());
     setSamsungInternet(isSamsungInternet());
     setIos(isIos());
+    setInstallPrompt(window.__pwaInstallPrompt ?? null);
 
-    if (window.__pwaInstallPrompt) {
-      setInstallPrompt(window.__pwaInstallPrompt);
-    }
-
-    const rememberPrompt = (event: BeforeInstallPromptEvent) => {
-      event.preventDefault();
-      window.__pwaInstallPrompt = event;
-      setInstallPrompt(event);
-    };
-
-    const onBeforeInstallPrompt = (event: Event) => {
-      rememberPrompt(event as BeforeInstallPromptEvent);
-    };
-
-    const onEarlyPromptReady = () => {
-      if (window.__pwaInstallPrompt) {
-        setInstallPrompt(window.__pwaInstallPrompt);
-      }
+    // The <head> boot script is the single beforeinstallprompt owner. It stores
+    // the browser event before React hydration and announces readiness here.
+    const onPromptReady = () => {
+      setInstallPrompt(window.__pwaInstallPrompt ?? null);
     };
 
     const onInstalled = () => {
@@ -75,13 +62,13 @@ export function InstallAppButton() {
       setHelpOpen(false);
     };
 
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    window.addEventListener("pwa-install-prompt-ready", onEarlyPromptReady);
+    window.addEventListener("pwa-install-prompt-ready", onPromptReady);
+    window.addEventListener("pwa-app-installed", onInstalled);
     window.addEventListener("appinstalled", onInstalled);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-      window.removeEventListener("pwa-install-prompt-ready", onEarlyPromptReady);
+      window.removeEventListener("pwa-install-prompt-ready", onPromptReady);
+      window.removeEventListener("pwa-app-installed", onInstalled);
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
@@ -104,7 +91,7 @@ export function InstallAppButton() {
       await promptEvent.prompt();
       const choice = await promptEvent.userChoice;
 
-      // The browser gives each beforeinstallprompt event a single prompt() use.
+      // A beforeinstallprompt event can only be used once.
       window.__pwaInstallPrompt = null;
       setInstallPrompt(null);
 
@@ -162,12 +149,12 @@ export function InstallAppButton() {
             ) : samsungInternet ? (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  현재 브라우저에서 웹페이지가 직접 호출할 수 있는 설치 프롬프트가 아직 제공되지 않았습니다.
+                  브라우저의 설치 이벤트를 기다리는 중입니다. 설치 가능 판정이 끝나면 상단 버튼이 <strong>앱 설치</strong>로 바뀝니다.
                 </p>
                 <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
-                  <li>페이지를 한 번 새로고침합니다.</li>
-                  <li>주소창의 <strong>설치(+) 아이콘</strong> 또는 메뉴의 설치 항목을 확인합니다.</li>
-                  <li>설치가 끝나면 앱스 화면의 <strong>수행평가 도우미</strong>를 실행합니다.</li>
+                  <li>페이지를 한 번 탭합니다.</li>
+                  <li>30초 정도 페이지를 열어 둡니다.</li>
+                  <li>상단 버튼 또는 주소창의 설치 아이콘을 다시 확인합니다.</li>
                 </ol>
                 <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                   계속 표시되지 않으면 <strong>/pwa-debug</strong>에서 Manifest와 Service Worker 상태를 확인할 수 있습니다.
@@ -176,16 +163,13 @@ export function InstallAppButton() {
             ) : (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  아직 브라우저가 이 페이지에 PWA 설치 프롬프트를 제공하지 않았습니다.
+                  아직 브라우저가 설치 이벤트를 제공하지 않았습니다.
                 </p>
                 <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
-                  <li>페이지를 한 번 새로고침합니다.</li>
-                  <li>Chrome의 <strong>⋮ 메뉴</strong>를 엽니다.</li>
-                  <li><strong>설치</strong> 또는 <strong>홈 화면에 추가</strong>를 선택합니다.</li>
+                  <li>페이지를 한 번 탭합니다.</li>
+                  <li>30초 정도 페이지를 열어 둡니다.</li>
+                  <li>상단 버튼 또는 브라우저 메뉴의 <strong>앱 설치</strong>를 다시 확인합니다.</li>
                 </ol>
-                <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                  설치 조건이 충족되면 이 버튼의 이름이 자동으로 <strong>앱 설치</strong>로 바뀌고, 누르는 즉시 브라우저 설치창이 열립니다.
-                </p>
               </>
             )}
 
