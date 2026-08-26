@@ -14,6 +14,12 @@ type BeforeInstallPromptEvent = Event & {
   }>;
 };
 
+declare global {
+  interface Window {
+    __pwaInstallPrompt?: BeforeInstallPromptEvent | null;
+  }
+}
+
 function isStandalone() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
@@ -42,24 +48,40 @@ export function InstallAppButton() {
     setSamsungInternet(isSamsungInternet());
     setIos(isIos());
 
-    const onBeforeInstallPrompt = (event: Event) => {
-      // Keep the browser install event so the visible app-install button can
-      // open the native PWA installation dialog after a user gesture.
+    if (window.__pwaInstallPrompt) {
+      setInstallPrompt(window.__pwaInstallPrompt);
+    }
+
+    const rememberPrompt = (event: BeforeInstallPromptEvent) => {
       event.preventDefault();
-      setInstallPrompt(event as BeforeInstallPromptEvent);
+      window.__pwaInstallPrompt = event;
+      setInstallPrompt(event);
+    };
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      rememberPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const onEarlyPromptReady = () => {
+      if (window.__pwaInstallPrompt) {
+        setInstallPrompt(window.__pwaInstallPrompt);
+      }
     };
 
     const onInstalled = () => {
+      window.__pwaInstallPrompt = null;
       setInstalled(true);
       setInstallPrompt(null);
       setHelpOpen(false);
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("pwa-install-prompt-ready", onEarlyPromptReady);
     window.addEventListener("appinstalled", onInstalled);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("pwa-install-prompt-ready", onEarlyPromptReady);
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
@@ -70,24 +92,27 @@ export function InstallAppButton() {
   const buttonLabel = ios ? "홈 화면에 추가" : canPromptInstall ? "앱 설치" : "앱 설치 안내";
 
   const handleInstallClick = async () => {
-    if (!installPrompt || ios) {
+    const promptEvent = installPrompt ?? window.__pwaInstallPrompt ?? null;
+
+    if (!promptEvent || ios) {
       setHelpOpen(true);
       return;
     }
 
     try {
       setPrompting(true);
-      await installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
 
-      // A beforeinstallprompt event can only be used once. If the user
-      // dismisses it, the browser decides when a future event may be emitted.
+      // The browser gives each beforeinstallprompt event a single prompt() use.
+      window.__pwaInstallPrompt = null;
       setInstallPrompt(null);
 
       if (choice.outcome === "accepted") {
         setHelpOpen(false);
       }
     } catch {
+      window.__pwaInstallPrompt = null;
       setInstallPrompt(null);
       setHelpOpen(true);
     } finally {
