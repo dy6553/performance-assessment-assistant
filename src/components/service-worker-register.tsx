@@ -24,13 +24,7 @@ function recordDiagnostic(message: string, detail?: string) {
     startedAt: Date.now(),
     events: [],
   };
-
-  const entry: DiagnosticEntry = {
-    at: Date.now(),
-    message,
-    detail,
-  };
-
+  const entry: DiagnosticEntry = { at: Date.now(), message, detail };
   current.events = [...current.events.slice(-49), entry];
   window.__pwaRuntimeDiagnostics = current;
   window.dispatchEvent(new CustomEvent("pwa-runtime-diagnostic", { detail: entry }));
@@ -55,16 +49,12 @@ export function ServiceWorkerRegister() {
       );
     };
 
-    const onAppInstalled = () => {
-      recordDiagnostic("appinstalled");
-    };
-
-    const onControllerChange = () => {
+    const onAppInstalled = () => recordDiagnostic("appinstalled");
+    const onControllerChange = () =>
       recordDiagnostic(
         "controllerchange",
         navigator.serviceWorker.controller?.scriptURL ?? "controller 없음",
       );
-    };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     window.addEventListener("appinstalled", onAppInstalled);
@@ -90,22 +80,18 @@ export function ServiceWorkerRegister() {
 
     const registerServiceWorker = () => {
       recordDiagnostic("service worker register 시작", `/sw.js · readyState=${document.readyState}`);
-
       void navigator.serviceWorker
         .register("/sw.js", { scope: "/", updateViaCache: "none" })
         .then(async (registration) => {
           recordDiagnostic("service worker register 성공", describeRegistration(registration));
-
           const workers = [registration.installing, registration.waiting, registration.active].filter(
             (worker): worker is ServiceWorker => Boolean(worker),
           );
-
           for (const worker of workers) {
             worker.addEventListener("statechange", () => {
               recordDiagnostic("service worker statechange", `${worker.scriptURL} · ${worker.state}`);
             });
           }
-
           try {
             await registration.update();
             recordDiagnostic("service worker update 완료", describeRegistration(registration));
