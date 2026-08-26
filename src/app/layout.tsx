@@ -30,24 +30,15 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
-// Capture beforeinstallprompt before React hydrates so a fast browser install
-// event is not lost. The client install button reuses the stored event and calls
-// prompt() only after the user's click. Service Worker registration stays early
-// as well so Samsung Internet and Chromium can evaluate installability quickly.
+// Keep the global boot script limited to Service Worker registration.
+// beforeinstallprompt is handled by the visible InstallAppButton component,
+// matching the web.dev/Squoosh pattern and avoiding duplicate interception
+// before React mounts (which can hide the browser's own install UI and make
+// /pwa-debug miss the event).
 const pwaBootScript =
   process.env.NODE_ENV === "production"
     ? `
 (function () {
-  window.addEventListener("beforeinstallprompt", function (event) {
-    event.preventDefault();
-    window.__pwaInstallPrompt = event;
-    window.dispatchEvent(new Event("pwa-install-prompt-ready"));
-  });
-
-  window.addEventListener("appinstalled", function () {
-    window.__pwaInstallPrompt = null;
-  });
-
   if (!("serviceWorker" in navigator)) return;
 
   navigator.serviceWorker
