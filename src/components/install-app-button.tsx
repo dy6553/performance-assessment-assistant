@@ -14,12 +14,6 @@ type BeforeInstallPromptEvent = Event & {
   }>;
 };
 
-declare global {
-  interface Window {
-    __pwaInstallPrompt?: BeforeInstallPromptEvent | null;
-  }
-}
-
 function isStandalone() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
@@ -47,26 +41,24 @@ export function InstallAppButton() {
     setInstalled(isStandalone());
     setSamsungInternet(isSamsungInternet());
     setIos(isIos());
-    setInstallPrompt(window.__pwaInstallPrompt ?? null);
 
-    const onPromptReady = () => {
-      setInstallPrompt(window.__pwaInstallPrompt ?? null);
+    const onBeforeInstallPrompt = (event: Event) => {
+      const promptEvent = event as BeforeInstallPromptEvent;
+      promptEvent.preventDefault();
+      setInstallPrompt(promptEvent);
     };
 
     const onInstalled = () => {
-      window.__pwaInstallPrompt = null;
       setInstalled(true);
       setInstallPrompt(null);
       setHelpOpen(false);
     };
 
-    window.addEventListener("pwa-install-prompt-ready", onPromptReady);
-    window.addEventListener("pwa-app-installed", onInstalled);
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     window.addEventListener("appinstalled", onInstalled);
 
     return () => {
-      window.removeEventListener("pwa-install-prompt-ready", onPromptReady);
-      window.removeEventListener("pwa-app-installed", onInstalled);
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
@@ -74,35 +66,21 @@ export function InstallAppButton() {
   if (installed) return null;
 
   const handleInstallClick = async () => {
-    if (ios) {
-      setHelpOpen(true);
-      return;
-    }
-
-    const promptEvent = installPrompt ?? window.__pwaInstallPrompt ?? null;
-
-    // Browsers only expose a programmatic PWA install dialog through the
-    // deferred beforeinstallprompt event. When it exists, this button opens the
-    // real browser installation confirmation immediately.
-    if (!promptEvent) {
+    if (ios || !installPrompt) {
       setHelpOpen(true);
       return;
     }
 
     try {
       setPrompting(true);
-      await promptEvent.prompt();
-      const choice = await promptEvent.userChoice;
-
-      // A deferred beforeinstallprompt event can only be used once.
-      window.__pwaInstallPrompt = null;
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
       setInstallPrompt(null);
 
       if (choice.outcome === "accepted") {
         setHelpOpen(false);
       }
     } catch {
-      window.__pwaInstallPrompt = null;
       setInstallPrompt(null);
       setHelpOpen(true);
     } finally {
@@ -152,15 +130,15 @@ export function InstallAppButton() {
             ) : (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  브라우저가 아직 웹페이지에 설치 프롬프트를 제공하지 않아 자동 설치창을 열 수 없습니다.
+                  브라우저가 아직 설치 가능 이벤트를 보내지 않았습니다.
                 </p>
                 <p className="mt-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                  설치 프롬프트가 준비되면 이 <strong>앱 설치</strong> 버튼을 누르는 즉시 브라우저의 실제 설치 확인창이 열립니다.
+                  시험온과 같은 방식으로 Service Worker 등록 뒤 설치 이벤트를 기다립니다. 이벤트가 준비되면 이 <strong>앱 설치</strong> 버튼이 실제 설치 확인창을 엽니다.
                 </p>
                 {samsungInternet ? (
                   <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
-                    <li>페이지를 한 번 새로고침합니다.</li>
-                    <li>주소창의 설치 아이콘이 나타나는지 확인합니다.</li>
+                    <li>페이지를 완전히 닫았다가 다시 엽니다.</li>
+                    <li>주소창의 설치 아이콘 또는 이 버튼을 다시 확인합니다.</li>
                     <li>설치 아이콘이 보이면 <strong>앱스 화면에 설치</strong>를 선택합니다.</li>
                   </ol>
                 ) : (
