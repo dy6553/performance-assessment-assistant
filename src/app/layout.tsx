@@ -30,32 +30,9 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
-// Keep the global boot script limited to Service Worker registration.
-// beforeinstallprompt is handled by the visible InstallAppButton component,
-// matching the web.dev/Squoosh pattern and avoiding duplicate interception
-// before React mounts (which can hide the browser's own install UI and make
-// /pwa-debug miss the event).
-const pwaBootScript =
-  process.env.NODE_ENV === "production"
-    ? `
-(function () {
-  if (!("serviceWorker" in navigator)) return;
-
-  navigator.serviceWorker
-    .register("/sw.js", { scope: "/", updateViaCache: "none" })
-    .catch(function () {
-      // /pwa-debug reports registration failures without blocking the app.
-    });
-})();
-`
-    : "";
-
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="ko">
-      <head>
-        {pwaBootScript ? <script dangerouslySetInnerHTML={{ __html: pwaBootScript }} /> : null}
-      </head>
       <body>{children}</body>
     </html>
   );
