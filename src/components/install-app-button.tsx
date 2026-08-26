@@ -49,8 +49,6 @@ export function InstallAppButton() {
     setIos(isIos());
     setInstallPrompt(window.__pwaInstallPrompt ?? null);
 
-    // The <head> boot script is the single beforeinstallprompt owner. It stores
-    // the browser event before React hydration and announces readiness here.
     const onPromptReady = () => {
       setInstallPrompt(window.__pwaInstallPrompt ?? null);
     };
@@ -75,13 +73,18 @@ export function InstallAppButton() {
 
   if (installed) return null;
 
-  const canPromptInstall = Boolean(installPrompt) && !ios;
-  const buttonLabel = ios ? "홈 화면에 추가" : canPromptInstall ? "앱 설치" : "앱 설치 안내";
-
   const handleInstallClick = async () => {
+    if (ios) {
+      setHelpOpen(true);
+      return;
+    }
+
     const promptEvent = installPrompt ?? window.__pwaInstallPrompt ?? null;
 
-    if (!promptEvent || ios) {
+    // Browsers only expose a programmatic PWA install dialog through the
+    // deferred beforeinstallprompt event. When it exists, this button opens the
+    // real browser installation confirmation immediately.
+    if (!promptEvent) {
       setHelpOpen(true);
       return;
     }
@@ -91,7 +94,7 @@ export function InstallAppButton() {
       await promptEvent.prompt();
       const choice = await promptEvent.userChoice;
 
-      // A beforeinstallprompt event can only be used once.
+      // A deferred beforeinstallprompt event can only be used once.
       window.__pwaInstallPrompt = null;
       setInstallPrompt(null);
 
@@ -113,10 +116,10 @@ export function InstallAppButton() {
         type="button"
         onClick={() => void handleInstallClick()}
         disabled={prompting}
-        className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-violet-700 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
         aria-label="수행평가 도우미 앱 설치"
       >
-        {prompting ? "설치창 여는 중…" : buttonLabel}
+        {prompting ? "설치창 여는 중…" : ios ? "홈 화면에 추가" : "앱 설치"}
       </button>
 
       {helpOpen ? (
@@ -137,7 +140,7 @@ export function InstallAppButton() {
                 ? "iPhone/iPad에 설치"
                 : samsungInternet
                   ? "삼성 인터넷에서 설치"
-                  : "Chrome에서 설치"}
+                  : "브라우저에서 설치"}
             </h2>
 
             {ios ? (
@@ -146,30 +149,25 @@ export function InstallAppButton() {
                 <li><strong>홈 화면에 추가</strong>를 선택합니다.</li>
                 <li>오른쪽 위 <strong>추가</strong>를 눌러 완료합니다.</li>
               </ol>
-            ) : samsungInternet ? (
-              <>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  브라우저의 설치 이벤트를 기다리는 중입니다. 설치 가능 판정이 끝나면 상단 버튼이 <strong>앱 설치</strong>로 바뀝니다.
-                </p>
-                <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
-                  <li>페이지를 한 번 탭합니다.</li>
-                  <li>30초 정도 페이지를 열어 둡니다.</li>
-                  <li>상단 버튼 또는 주소창의 설치 아이콘을 다시 확인합니다.</li>
-                </ol>
-                <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                  계속 표시되지 않으면 <strong>/pwa-debug</strong>에서 Manifest와 Service Worker 상태를 확인할 수 있습니다.
-                </p>
-              </>
             ) : (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  아직 브라우저가 설치 이벤트를 제공하지 않았습니다.
+                  브라우저가 아직 웹페이지에 설치 프롬프트를 제공하지 않아 자동 설치창을 열 수 없습니다.
                 </p>
-                <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
-                  <li>페이지를 한 번 탭합니다.</li>
-                  <li>30초 정도 페이지를 열어 둡니다.</li>
-                  <li>상단 버튼 또는 브라우저 메뉴의 <strong>앱 설치</strong>를 다시 확인합니다.</li>
-                </ol>
+                <p className="mt-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                  설치 프롬프트가 준비되면 이 <strong>앱 설치</strong> 버튼을 누르는 즉시 브라우저의 실제 설치 확인창이 열립니다.
+                </p>
+                {samsungInternet ? (
+                  <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
+                    <li>페이지를 한 번 새로고침합니다.</li>
+                    <li>주소창의 설치 아이콘이 나타나는지 확인합니다.</li>
+                    <li>설치 아이콘이 보이면 <strong>앱스 화면에 설치</strong>를 선택합니다.</li>
+                  </ol>
+                ) : (
+                  <p className="mt-4 text-sm leading-6 text-slate-700">
+                    브라우저 메뉴의 <strong>앱 설치</strong> 항목도 함께 확인할 수 있습니다.
+                  </p>
+                )}
               </>
             )}
 
