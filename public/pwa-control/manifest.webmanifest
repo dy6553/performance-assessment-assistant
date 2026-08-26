@@ -1,0 +1,26 @@
+{
+  "id": "/pwa-control/",
+  "name": "수행평가 도우미 PWA 최소 테스트",
+  "short_name": "PWA 테스트",
+  "description": "메인 앱과 분리해 Samsung Internet의 PWA 설치 판정을 확인하는 최소 테스트 앱",
+  "start_url": "/pwa-control/test",
+  "scope": "/pwa-control/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#7c3aed",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
