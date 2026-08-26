@@ -1,4 +1,4 @@
-const CACHE_NAME = "performance-helper-shell-v3";
+const CACHE_NAME = "performance-helper-shell-v4";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
