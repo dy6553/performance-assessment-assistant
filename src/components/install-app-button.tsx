@@ -43,7 +43,7 @@ export function InstallAppButton() {
 
   if (installed) return null;
 
-  const buttonLabel = ios ? "홈 화면에 추가" : "앱 설치";
+  const buttonLabel = ios ? "홈 화면에 추가" : "앱 설치 안내";
 
   return (
     <>
@@ -51,7 +51,7 @@ export function InstallAppButton() {
         type="button"
         onClick={() => setHelpOpen(true)}
         className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-black text-violet-700 transition hover:bg-violet-100 active:scale-[0.98]"
-        aria-label="수행평가 도우미 앱 설치"
+        aria-label="수행평가 도우미 앱 설치 안내"
       >
         {buttonLabel}
       </button>
@@ -86,23 +86,26 @@ export function InstallAppButton() {
             ) : samsungInternet ? (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  웹페이지에서 설치 이벤트를 가로채지 않고 삼성 인터넷의 기본 PWA 설치 기능을 그대로 사용하도록 변경했습니다.
+                  삼성 인터넷의 기본 PWA 설치 UI를 방해하지 않도록 웹페이지에서 설치 프롬프트를 가로채지 않습니다.
                 </p>
                 <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
-                  <li>브라우저 <strong>메뉴</strong>를 엽니다.</li>
-                  <li><strong>현재 페이지 추가</strong>를 선택합니다.</li>
-                  <li><strong>앱스 화면</strong> 또는 <strong>앱 설치</strong>가 보이면 선택합니다.</li>
+                  <li>주소창의 <strong>설치(+) 아이콘</strong>을 누릅니다.</li>
+                  <li>아래에 나타나는 <strong>앱스 화면에 설치</strong>를 확인합니다.</li>
+                  <li>설치가 끝나면 앱스 화면의 <strong>수행평가 도우미</strong>를 실행합니다.</li>
                 </ol>
+                <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                  설치 아이콘이 아직 없으면 페이지를 새로고침한 뒤 <strong>/pwa-debug</strong>에서 삼성 인터넷 공식 설치 기준을 확인하세요. 일부 버전에서는 메뉴의 <strong>현재 페이지 추가</strong>가 보조 경로로 표시될 수 있습니다.
+                </p>
               </>
             ) : (
               <>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Chrome의 기본 설치 기능을 사용합니다. 브라우저가 PWA 설치 가능 상태로 판정하면 설치 항목이 표시됩니다.
+                  Chrome의 기본 PWA 설치 기능을 사용하며, 웹페이지에서 기본 설치 프로모션을 취소하지 않습니다.
                 </p>
                 <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-slate-700">
                   <li>Chrome 오른쪽 위 <strong>⋮ 메뉴</strong>를 엽니다.</li>
-                  <li><strong>홈 화면에 추가</strong> 또는 <strong>설치 및 바로가기</strong>를 선택합니다.</li>
-                  <li><strong>앱 설치</strong>가 나타나면 선택합니다.</li>
+                  <li><strong>앱 설치</strong> 또는 <strong>홈 화면에 추가</strong>를 선택합니다.</li>
+                  <li>다음 화면에서 <strong>설치</strong>가 표시되면 선택합니다.</li>
                 </ol>
               </>
             )}

@@ -14,8 +14,10 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#f8fafc",
     theme_color: "#7c3aed",
     lang: "ko",
-    orientation: "portrait-primary",
     prefer_related_applications: false,
+    // Samsung Internet's published install indication criteria require at
+    // least one >=144px icon. Keep the install manifest conservative and PNG-only
+    // so both Samsung Internet and Chromium can consume it consistently.
     icons: [
       {
         src: "/icons/icon-192.png",
@@ -27,18 +29,6 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/icons/icon-512.png",
         sizes: "512x512",
         type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/icons/icon-512.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "maskable",
-      },
-      {
-        src: "/icon.svg",
-        sizes: "any",
-        type: "image/svg+xml",
         purpose: "any",
       },
     ],
