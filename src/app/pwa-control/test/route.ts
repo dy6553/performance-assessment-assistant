@@ -58,6 +58,20 @@ const html = `<!doctype html>
     status.className = ok ? "ok" : "wait";
   }
 
+  window.addEventListener("error", function (event) {
+    log("window error · " + (event.message || "알 수 없는 오류"));
+    setStatus("스크립트 오류 발생 — 아래 로그 확인", false);
+  });
+
+  window.addEventListener("unhandledrejection", function (event) {
+    var reason = event.reason && event.reason.message ? event.reason.message : String(event.reason || "알 수 없는 오류");
+    log("unhandled rejection · " + reason);
+    setStatus("비동기 오류 발생 — 아래 로그 확인", false);
+  });
+
+  log("진단 스크립트 실행 시작 · readyState=" + document.readyState);
+  setStatus("진단 스크립트 실행됨 · Service Worker 준비 중", false);
+
   window.addEventListener("beforeinstallprompt", function (event) {
     log("beforeinstallprompt 발생 · prompt=" + (typeof event.prompt === "function") + " · defaultPrevented=" + event.defaultPrevented);
     event.preventDefault();
@@ -112,8 +126,9 @@ const html = `<!doctype html>
     log("controllerchange · " + (navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : "none"));
   });
 
-  window.addEventListener("load", async function () {
+  async function startServiceWorker() {
     try {
+      setStatus("Service Worker 등록 중", false);
       log("Service Worker 등록 시작 · /pwa-control/sw.js · scope=/pwa-control/");
       var registration = await navigator.serviceWorker.register("/pwa-control/sw.js", {
         scope: "/pwa-control/",
@@ -121,17 +136,36 @@ const html = `<!doctype html>
       });
       log("Service Worker 등록 성공 · scope=" + registration.scope);
       await registration.update();
-      var ready = await navigator.serviceWorker.ready;
+      log("Service Worker update 완료");
+
+      var ready = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise(function (_, reject) {
+          setTimeout(function () { reject(new Error("serviceWorker.ready 8초 타임아웃")); }, 8000);
+        })
+      ]);
+
       log("Service Worker ready · scope=" + ready.scope);
       log("controller · " + (navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : "none"));
       if (!installEvent && !matchMedia("(display-mode: standalone)").matches) {
         setStatus("설치 이벤트 대기 중 — 화면을 한 번 탭하고 40초 이상 유지", false);
       }
     } catch (error) {
-      log("Service Worker 등록 실패 · " + (error && error.message ? error.message : String(error)));
-      setStatus("Service Worker 등록 실패", false);
+      log("Service Worker 등록/준비 실패 · " + (error && error.message ? error.message : String(error)));
+      setStatus("Service Worker 등록/준비 실패", false);
     }
-  });
+  }
+
+  if (document.readyState === "complete") {
+    log("window load 이미 완료 · 즉시 등록 시작");
+    void startServiceWorker();
+  } else {
+    log("window load 대기");
+    window.addEventListener("load", function () {
+      log("window load 발생");
+      void startServiceWorker();
+    }, { once: true });
+  }
 })();
 </script>
 </body>
