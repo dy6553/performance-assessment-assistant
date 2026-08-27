@@ -50,7 +50,7 @@ const html = `<!doctype html>
 
   function log(message) {
     var line = new Date().toISOString() + "  " + message;
-    logBox.textContent += (logBox.textContent ? "\n" : "") + line;
+    logBox.textContent += (logBox.textContent ? String.fromCharCode(10) : "") + line;
   }
 
   function setStatus(message, ok) {
