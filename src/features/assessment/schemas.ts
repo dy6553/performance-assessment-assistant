@@ -1,10 +1,11 @@
 import { z } from "zod";
 
 export const schoolLevelSchema = z.enum(["초등학교", "중학교", "고등학교"]);
+export const curriculumVersionSchema = z.enum(["2022 개정 교육과정", "2015 개정 교육과정"]);
 
 export const assignmentInputSchema = z
   .object({
-    schoolYear: z.number().int().min(2015).max(2035),
+    curriculum: curriculumVersionSchema,
     schoolLevel: schoolLevelSchema,
     grade: z.number().int().min(1).max(6),
     subject: z.string().trim().min(1).max(80),

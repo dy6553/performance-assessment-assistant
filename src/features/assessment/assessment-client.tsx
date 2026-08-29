@@ -26,7 +26,7 @@ type VerificationWithScore = VerificationResult & { readinessScore: number };
 type Step = "input" | "strategy" | "draft" | "verification";
 
 const initialAssignment: AssignmentInput = {
-  schoolYear: 2026,
+  curriculum: "2022 개정 교육과정",
   schoolLevel: "고등학교",
   grade: 1,
   subject: "통합사회",
@@ -159,8 +159,15 @@ export function AssessmentClient() {
         <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-950">기본 정보</h2>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="학년도">
-            <input className={inputClass} min={2015} max={2035} type="number" value={assignment.schoolYear} onChange={(event) => update("schoolYear", Number(event.target.value))} />
+          <Field label="교육과정">
+            <select
+              className={inputClass}
+              value={assignment.curriculum}
+              onChange={(event) => update("curriculum", event.target.value as AssignmentInput["curriculum"])}
+            >
+              <option value="2022 개정 교육과정">2022 개정 교육과정</option>
+              <option value="2015 개정 교육과정">2015 개정 교육과정</option>
+            </select>
           </Field>
           <Field label="학교급">
             <select className={inputClass} value={assignment.schoolLevel} onChange={(event) => {
