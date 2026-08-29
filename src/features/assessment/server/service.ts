@@ -16,7 +16,7 @@ import { routeModel, type AgentTask, type ModelRoute } from "@/lib/ai/router";
 type RunResult<T> = { data: T; route: ModelRoute };
 
 export async function analyzeAssignment(assignment: AssignmentInput): Promise<RunResult<AnalysisResult>> {
-  const curriculum = inferCurriculum(assignment);
+  const curriculum = selectedCurriculum(assignment);
   const route = await routeModel({
     task: "strategy",
     inputCharacters: JSON.stringify(assignment).length,
@@ -72,7 +72,7 @@ export async function analyzeAssignment(assignment: AssignmentInput): Promise<Ru
         role: "user",
         content: JSON.stringify({
           assignment,
-          curriculumInference: curriculum,
+          selectedCurriculum: curriculum,
           achievementStandardPolicy: userProvidedStandard
             ? "사용자가 제공한 문구만 구조화하고 공식 검증 전에는 새 코드를 만들지 말 것"
             : "성취기준은 비워 두고 공식 검색 필요 경고를 남길 것",
@@ -209,18 +209,11 @@ function routeForRun(route: ModelRoute, actualModel: string): ModelRoute {
   };
 }
 
-function inferCurriculum(assignment: AssignmentInput): AnalysisResult["curriculum"] {
-  const { schoolYear, schoolLevel, grade } = assignment;
-  const uses2022 =
-    (schoolLevel === "초등학교" && ((schoolYear >= 2024 && grade <= 2) || (schoolYear >= 2025 && grade <= 4) || schoolYear >= 2026)) ||
-    (schoolLevel === "중학교" && ((schoolYear >= 2025 && grade === 1) || (schoolYear >= 2026 && grade <= 2) || schoolYear >= 2027)) ||
-    (schoolLevel === "고등학교" && ((schoolYear >= 2025 && grade === 1) || (schoolYear >= 2026 && grade <= 2) || schoolYear >= 2027));
-
-  const version = uses2022 ? "2022 개정 교육과정" : "2015 개정 교육과정 또는 이전 적용 교육과정";
+function selectedCurriculum(assignment: AssignmentInput): AnalysisResult["curriculum"] {
   return {
-    version,
-    status: "inferred_needs_verification",
-    basis: `${schoolYear}학년도 ${schoolLevel} ${grade}학년의 순차 적용 일정을 기준으로 자동 추론했습니다. 공식 성취기준 검색 결과가 연결되면 최종 확정해야 합니다.`,
+    version: assignment.curriculum,
+    status: "user_provided",
+    basis: `기본 정보에서 선택된 ${assignment.curriculum}을 기준으로 분석합니다.`,
   };
 }
 
