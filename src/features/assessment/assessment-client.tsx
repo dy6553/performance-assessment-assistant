@@ -9,6 +9,7 @@ import type {
   AnalysisResult,
   AssignmentInput,
   DraftResult,
+  TopicRecommendationResult,
   VerificationResult,
 } from "./schemas";
 import { PdfRubricUpload } from "./pdf-rubric-upload";
@@ -24,6 +25,18 @@ type RouteMeta = {
 type VerificationWithScore = VerificationResult & { readinessScore: number };
 
 type Step = "input" | "strategy" | "draft" | "verification";
+
+const assignmentTypes = ["자동 분석", "조사·보고서", "발표·토론", "실험·탐구"] as const;
+const topicDependencyKeys: Array<keyof AssignmentInput> = [
+  "curriculum",
+  "schoolLevel",
+  "grade",
+  "subject",
+  "course",
+  "assignmentType",
+  "teacherInstruction",
+  "rubricText",
+];
 
 const initialAssignment: AssignmentInput = {
   curriculum: "2022 개정 교육과정",
@@ -47,6 +60,8 @@ export function AssessmentClient() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [draft, setDraft] = useState<DraftResult | null>(null);
   const [verification, setVerification] = useState<VerificationWithScore | null>(null);
+  const [topicRecommendations, setTopicRecommendations] = useState<TopicRecommendationResult["topics"]>([]);
+  const [topicLoading, setTopicLoading] = useState(false);
   const [step, setStep] = useState<Step>("input");
   const [loading, setLoading] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -59,10 +74,51 @@ export function AssessmentClient() {
 
   function update<K extends keyof AssignmentInput>(key: K, value: AssignmentInput[K]) {
     setAssignment((current) => ({ ...current, [key]: value }));
+    if (topicDependencyKeys.includes(key)) setTopicRecommendations([]);
     setAnalysis(null);
     setDraft(null);
     setVerification(null);
     setStep("input");
+  }
+
+  async function recommendTopicIdeas() {
+    if (!assignment.subject.trim()) {
+      setError("과목을 먼저 입력해 주세요.");
+      return;
+    }
+
+    setTopicLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/assignment/recommend-topic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          curriculum: assignment.curriculum,
+          schoolLevel: assignment.schoolLevel,
+          grade: assignment.grade,
+          subject: assignment.subject,
+          course: assignment.course,
+          assignmentType: assignment.assignmentType,
+          teacherInstruction: assignment.teacherInstruction,
+          rubricText: assignment.rubricText,
+        }),
+      });
+      const payload = await readApiResponse<{
+        data?: TopicRecommendationResult;
+        route?: RouteMeta;
+        error?: string;
+      }>(response, "주제를 추천하지 못했습니다.");
+      if (!response.ok || !payload.data || !payload.route) {
+        throw new Error(payload.error || "주제를 추천하지 못했습니다.");
+      }
+      setTopicRecommendations(payload.data.topics);
+    } catch (caught) {
+      setTopicRecommendations([]);
+      setError(caught instanceof Error ? caught.message : "주제 추천 중 오류가 발생했습니다.");
+    } finally {
+      setTopicLoading(false);
+    }
   }
 
   async function analyze(event: FormEvent) {
@@ -173,6 +229,7 @@ export function AssessmentClient() {
             <select className={inputClass} value={assignment.schoolLevel} onChange={(event) => {
               const level = event.target.value as AssignmentInput["schoolLevel"];
               setAssignment((current) => ({ ...current, schoolLevel: level, grade: Math.min(current.grade, level === "초등학교" ? 6 : 3) }));
+              setTopicRecommendations([]);
               setAnalysis(null); setDraft(null); setVerification(null); setStep("input");
             }}>
               <option>초등학교</option><option>중학교</option><option>고등학교</option>
@@ -184,7 +241,9 @@ export function AssessmentClient() {
             </select>
           </Field>
           <Field label="수행평가 종류">
-            <input className={inputClass} value={assignment.assignmentType} onChange={(event) => update("assignmentType", event.target.value)} placeholder="자동 분석 또는 조사 보고서" />
+            <select className={inputClass} value={assignment.assignmentType} onChange={(event) => update("assignmentType", event.target.value)}>
+              {assignmentTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
           </Field>
         </div>
 
@@ -195,14 +254,46 @@ export function AssessmentClient() {
         </div>
 
         <div className="mt-4 space-y-4">
-          <Field label="수행평가 주제">
-            <input className={inputClass} value={assignment.topic} onChange={(event) => update("topic", event.target.value)} placeholder="예: 기후위기 대응 정책 비교" />
-          </Field>
+          <div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <label className="text-sm font-black text-slate-700" htmlFor="assignment-topic">수행평가 주제</label>
+              <button
+                className="inline-flex min-h-9 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3 text-xs font-black text-violet-700 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={Boolean(loading) || topicLoading}
+                onClick={() => void recommendTopicIdeas()}
+                type="button"
+              >
+                {topicLoading ? "추천 중..." : "AI 주제 추천"}
+              </button>
+            </div>
+            <input
+              className={inputClass}
+              id="assignment-topic"
+              value={assignment.topic}
+              onChange={(event) => update("topic", event.target.value)}
+              placeholder="예: 기후위기 대응 정책 비교"
+            />
+            {topicRecommendations.length ? (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {topicRecommendations.map((item, index) => (
+                  <button
+                    className="rounded-2xl border border-violet-100 bg-violet-50/60 p-3 text-left transition hover:border-violet-300 hover:bg-violet-50"
+                    key={`${item.title}-${index}`}
+                    onClick={() => update("topic", item.title)}
+                    type="button"
+                  >
+                    <span className="block text-sm font-black text-slate-900">{item.title}</span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-500">{item.rationale}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <Field label="교사가 제시한 과제 설명">
             <textarea className={`${inputClass} min-h-36 resize-y`} value={assignment.teacherInstruction} onChange={(event) => update("teacherInstruction", event.target.value)} placeholder="안내문을 가능한 한 그대로 붙여 넣으세요." />
           </Field>
           <PdfRubricUpload
-            disabled={Boolean(loading)}
+            disabled={Boolean(loading) || topicLoading}
             onExtracted={(text) => update("rubricText", text)}
           />
           {assignment.rubricText ? (
@@ -233,7 +324,7 @@ export function AssessmentClient() {
         {error ? <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</p> : null}
         {loading ? <p className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-bold text-violet-700">{loading}</p> : null}
 
-        <button className={primaryButtonClass} disabled={Boolean(loading)} type="submit">과제 분석하고 작성 전략 만들기</button>
+        <button className={primaryButtonClass} disabled={Boolean(loading) || topicLoading} type="submit">과제 분석하고 작성 전략 만들기</button>
       </form>
 
       {analysis ? (
