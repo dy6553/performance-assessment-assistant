@@ -49,10 +49,6 @@ export function AssessmentQuickTools() {
     const select = findAssignmentTypeSelect();
     const topicButton = findTopicRecommendationButton();
 
-    if (select && assignmentTypeOptions.some((item) => item.value === select.value)) {
-      setActiveType(select.value as AssignmentType);
-    }
-
     const originalTypeField = select?.closest<HTMLElement>("label") ?? null;
     const originalTypeDisplay = originalTypeField?.style.display ?? "";
     if (originalTypeField) originalTypeField.style.display = "none";
