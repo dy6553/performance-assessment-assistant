@@ -3,10 +3,13 @@ import "server-only";
 import {
   analysisResultSchema,
   draftResultSchema,
+  topicRecommendationResultSchema,
   verificationResultSchema,
   type AnalysisResult,
   type AssignmentInput,
   type DraftResult,
+  type TopicRecommendationRequest,
+  type TopicRecommendationResult,
   type VerificationResult,
   type VerificationStatus,
 } from "../schemas";
@@ -14,6 +17,52 @@ import { generateStructured } from "@/lib/ai/nvidia";
 import { routeModel, type AgentTask, type ModelRoute } from "@/lib/ai/router";
 
 type RunResult<T> = { data: T; route: ModelRoute };
+
+export async function recommendTopics(
+  input: TopicRecommendationRequest,
+): Promise<RunResult<TopicRecommendationResult>> {
+  const route = await routeModel({
+    task: "task_parser",
+    inputCharacters: JSON.stringify(input).length,
+  });
+
+  const system = [
+    "당신은 한국 초·중·고 수행평가 주제 추천 도우미다.",
+    "사용자가 선택한 교육과정, 학교급, 학년, 과목, 수행평가 유형에 맞는 구체적이고 수행 가능한 주제를 추천한다.",
+    "교사 안내문과 실제 루브릭이 제공되면 이를 최우선으로 반영한다.",
+    "단순히 넓은 키워드를 나열하지 말고 조사 질문이나 비교·분석 대상이 드러나는 주제를 제시한다.",
+    "학생이 공식 자료에서 근거를 찾을 수 있고, 해당 학년이 다룰 수 있는 난이도로 제한한다.",
+    "입력에 없는 성취기준 코드, 최신 통계, 법·정책의 세부 사실을 만들어내지 않는다.",
+    "위험하거나 학교 수행평가에 부적절한 활동을 권하지 않는다.",
+    "각 주제의 rationale에는 왜 이 과목과 수행평가 유형에 적합한지 짧게 설명한다.",
+    "JSON 객체 하나만 출력한다.",
+  ].join("\n");
+
+  const run = await generateStructured({
+    taskName: "assignment_topic_recommendation",
+    model: route.model,
+    fallbackModel: route.fallback,
+    schema: topicRecommendationResultSchema,
+    maxTokens: 2_500,
+    temperature: 0.3,
+    messages: [
+      {
+        role: "system",
+        content: `${system}\n\n출력 계약: ${JSON.stringify({
+          topics: [
+            {
+              title: "구체적인 수행평가 주제",
+              rationale: "과목·학년·수행평가 유형과의 적합성",
+            },
+          ],
+        })}`,
+      },
+      { role: "user", content: JSON.stringify(input) },
+    ],
+  });
+
+  return { data: run.data, route: routeForRun(route, run.model) };
+}
 
 export async function analyzeAssignment(assignment: AssignmentInput): Promise<RunResult<AnalysisResult>> {
   const curriculum = selectedCurriculum(assignment);
