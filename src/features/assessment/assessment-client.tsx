@@ -8,6 +8,7 @@ import type {
   DraftResult,
   VerificationResult,
 } from "./schemas";
+import { PdfRubricUpload } from "./pdf-rubric-upload";
 
 type RouteMeta = {
   model: string;
@@ -193,13 +194,19 @@ export function AssessmentClient() {
           <Field label="교사가 제시한 과제 설명">
             <textarea className={`${inputClass} min-h-36 resize-y`} value={assignment.teacherInstruction} onChange={(event) => update("teacherInstruction", event.target.value)} placeholder="안내문을 가능한 한 그대로 붙여 넣으세요." />
           </Field>
+          <PdfRubricUpload
+            disabled={Boolean(loading)}
+            onExtracted={(text) => update("rubricText", text)}
+          />
+          {assignment.rubricText ? (
+            <Field label="평가 기준 / 루브릭">
+              <textarea className={`${inputClass} min-h-32 resize-y`} value={assignment.rubricText} onChange={(event) => update("rubricText", event.target.value)} />
+            </Field>
+          ) : null}
           <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <summary className="cursor-pointer font-black text-slate-800">추가 정보</summary>
             <div className="mt-4 space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="평가 기준 / 루브릭">
-                  <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.rubricText} onChange={(event) => update("rubricText", event.target.value)} placeholder="배점, 평가요소, 수행수준" />
-                </Field>
                 <Field label="성취기준">
                   <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.achievementStandardText} onChange={(event) => update("achievementStandardText", event.target.value)} />
                 </Field>

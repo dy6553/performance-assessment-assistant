@@ -4,7 +4,14 @@ import { z } from "zod";
 
 const DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1";
 
-type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+type ChatContent =
+  | string
+  | Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    >;
+
+type ChatMessage = { role: "system" | "user" | "assistant"; content: ChatContent };
 
 type NvidiaResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
