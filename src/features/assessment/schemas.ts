@@ -31,6 +31,44 @@ export const assignmentInputSchema = z
     }
   });
 
+export const topicRecommendationRequestSchema = z
+  .object({
+    curriculum: curriculumVersionSchema,
+    schoolLevel: schoolLevelSchema,
+    grade: z.number().int().min(1).max(6),
+    subject: z.string().trim().min(1).max(80),
+    course: z.string().trim().max(120).default(""),
+    assignmentType: z.string().trim().min(1).max(120),
+    teacherInstruction: z.string().trim().max(20_000).default(""),
+    rubricText: z.string().trim().max(20_000).default(""),
+  })
+  .superRefine((value, ctx) => {
+    const maxGrade = value.schoolLevel === "초등학교" ? 6 : 3;
+    if (value.grade > maxGrade) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["grade"],
+        message: `${value.schoolLevel} 학년 범위를 확인해 주세요.`,
+      });
+    }
+  });
+
+export const topicRecommendationResultSchema = z
+  .object({
+    topics: z
+      .array(
+        z
+          .object({
+            title: z.string().trim().min(2).max(180),
+            rationale: z.string().trim().min(2).max(500),
+          })
+          .strict(),
+      )
+      .min(4)
+      .max(6),
+  })
+  .strict();
+
 const requirementSchema = z
   .object({
     requiredSections: z.array(z.string().trim().min(1).max(300)).max(20),
@@ -162,6 +200,8 @@ export const verifyRequestSchema = z
   .strict();
 
 export type AssignmentInput = z.infer<typeof assignmentInputSchema>;
+export type TopicRecommendationRequest = z.infer<typeof topicRecommendationRequestSchema>;
+export type TopicRecommendationResult = z.infer<typeof topicRecommendationResultSchema>;
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
 export type DraftResult = z.infer<typeof draftResultSchema>;
 export type VerificationResult = z.infer<typeof verificationResultSchema>;
