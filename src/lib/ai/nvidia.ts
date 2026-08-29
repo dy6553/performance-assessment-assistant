@@ -26,6 +26,7 @@ export async function generateStructured<T>({
   maxTokens = 8_192,
   temperature = 0.15,
   signal,
+  fallbackModel,
 }: {
   taskName: string;
   model: string;
@@ -33,6 +34,48 @@ export async function generateStructured<T>({
   messages: ChatMessage[];
   maxTokens?: number;
   temperature?: number;
+  signal?: AbortSignal;
+  fallbackModel?: string | null;
+}): Promise<StructuredRun<T>> {
+  const candidates = [model, ...(fallbackModel && fallbackModel !== model ? [fallbackModel] : [])];
+  let lastError: unknown;
+
+  for (const candidate of candidates) {
+    try {
+      return await runStructured({
+        taskName,
+        model: candidate,
+        schema,
+        messages,
+        maxTokens,
+        temperature,
+        signal,
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`${taskName} AI 호출에 실패했습니다.`);
+}
+
+async function runStructured<T>({
+  taskName,
+  model,
+  schema,
+  messages,
+  maxTokens,
+  temperature,
+  signal,
+}: {
+  taskName: string;
+  model: string;
+  schema: z.ZodType<T>;
+  messages: ChatMessage[];
+  maxTokens: number;
+  temperature: number;
   signal?: AbortSignal;
 }): Promise<StructuredRun<T>> {
   const apiKey = process.env.NVIDIA_API_KEY?.trim();

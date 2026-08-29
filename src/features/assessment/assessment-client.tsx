@@ -302,6 +302,9 @@ function Progress({ step }: { step: Step }) {
 }
 
 function VerificationPanel({ result }: { result: VerificationWithScore }) {
+  const revisedDraftText = result.revisedDraft?.sections
+    .map((section) => `${section.heading}\n${section.body}`)
+    .join("\n\n");
   const checks = [
     ["요구조건", result.requirementCheck],
     ["교육과정", result.curriculumCheck],
@@ -326,6 +329,28 @@ function VerificationPanel({ result }: { result: VerificationWithScore }) {
           </div>
         ))}
       </div>
+      {result.revisedDraft && revisedDraftText ? (
+        <div className="mt-6 rounded-2xl border border-emerald-200 bg-white p-5">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">검증 반영 수정본</p>
+          <h3 className="mt-2 text-xl font-black text-slate-950">{result.revisedDraft.title}</h3>
+          <p className="mt-2 text-sm font-bold leading-6 text-emerald-900">{result.revisedDraft.thesisOrGoal}</p>
+          <div className="mt-4 space-y-4">
+            {result.revisedDraft.sections.map((section, index) => (
+              <div key={`${section.heading}-${index}`}>
+                <h4 className="font-black text-slate-900">{section.heading}</h4>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-7 text-slate-700">{section.body}</p>
+              </div>
+            ))}
+          </div>
+          <button
+            className={secondaryButtonClass}
+            onClick={() => void navigator.clipboard.writeText(revisedDraftText)}
+            type="button"
+          >
+            수정본 복사
+          </button>
+        </div>
+      ) : null}
       <p className="mt-5 text-xs leading-5 text-slate-500">이 점수는 학교 성적 예측치가 아니라 명세에 정의된 내부 품질검사 점수입니다. 웹 검증이 필요한 사실은 확인 전 확정하지 않습니다.</p>
     </section>
   );

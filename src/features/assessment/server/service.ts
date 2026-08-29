@@ -63,6 +63,7 @@ export async function analyzeAssignment(assignment: AssignmentInput): Promise<Ru
   const run = await generateStructured({
     taskName: "assignment_analysis",
     model: route.model,
+    fallbackModel: route.fallback,
     schema: analysisResultSchema,
     maxTokens: 7_000,
     messages: [
@@ -91,7 +92,7 @@ export async function analyzeAssignment(assignment: AssignmentInput): Promise<Ru
     ].slice(0, 12),
   };
 
-  return { data: normalized, route };
+  return { data: normalized, route: routeForRun(route, run.model) };
 }
 
 export async function generateDraft(
@@ -118,6 +119,7 @@ export async function generateDraft(
   const run = await generateStructured({
     taskName: "assignment_writer",
     model: route.model,
+    fallbackModel: route.fallback,
     schema: draftResultSchema,
     maxTokens: 12_000,
     messages: [
@@ -136,7 +138,7 @@ export async function generateDraft(
     ],
   });
 
-  return { data: run.data, route };
+  return { data: run.data, route: routeForRun(route, run.model) };
 }
 
 export async function verifyDraft(
@@ -163,6 +165,7 @@ export async function verifyDraft(
   const run = await generateStructured({
     taskName: "assignment_verification",
     model: route.model,
+    fallbackModel: route.fallback,
     schema: verificationResultSchema,
     maxTokens: 10_000,
     temperature: 0.08,
@@ -190,7 +193,20 @@ export async function verifyDraft(
     };
   }
 
-  return { data: { ...verified, readinessScore: calculateReadiness(verified) }, route };
+  return {
+    data: { ...verified, readinessScore: calculateReadiness(verified) },
+    route: routeForRun(route, run.model),
+  };
+}
+
+function routeForRun(route: ModelRoute, actualModel: string): ModelRoute {
+  if (actualModel === route.model) return route;
+  return {
+    ...route,
+    model: actualModel,
+    fallback: route.model,
+    reason: `${route.reason} 1차 모델 호출 실패로 승인된 예비 모델을 사용했습니다.`,
+  };
 }
 
 function inferCurriculum(assignment: AssignmentInput): AnalysisResult["curriculum"] {
