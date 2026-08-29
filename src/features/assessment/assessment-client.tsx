@@ -43,7 +43,6 @@ export function AssessmentClient() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [draft, setDraft] = useState<DraftResult | null>(null);
   const [verification, setVerification] = useState<VerificationWithScore | null>(null);
-  const [routes, setRoutes] = useState<RouteMeta[]>([]);
   const [step, setStep] = useState<Step>("input");
   const [loading, setLoading] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -85,7 +84,6 @@ export function AssessmentClient() {
         throw new Error(payload.error || "분석 결과를 만들지 못했습니다.");
       }
       setAnalysis(payload.data);
-      setRoutes([payload.route]);
       setStep("strategy");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "분석 중 오류가 발생했습니다.");
@@ -113,7 +111,6 @@ export function AssessmentClient() {
         throw new Error(payload.error || "초안을 만들지 못했습니다.");
       }
       setDraft(payload.data);
-      setRoutes((current) => [...current, payload.route as RouteMeta]);
       setStep("draft");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "초안 작성 중 오류가 발생했습니다.");
@@ -141,7 +138,6 @@ export function AssessmentClient() {
         throw new Error(payload.error || "초안을 검증하지 못했습니다.");
       }
       setVerification(payload.data);
-      setRoutes((current) => [...current, payload.route as RouteMeta]);
       setStep("verification");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "검증 중 오류가 발생했습니다.");
@@ -155,14 +151,8 @@ export function AssessmentClient() {
       <Progress step={step} />
 
       <form className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7" onSubmit={analyze}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">STEP 1</p>
-            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-950">수행평가 정보를 입력하세요</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">교사 안내문과 실제 루브릭이 가장 높은 우선순위를 가집니다. 성취기준을 모르면 비워 두셔도 됩니다.</p>
-          </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">개인정보 최소 입력</span>
-        </div>
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">STEP 1</p>
+        <h2 className="mt-2 text-2xl font-black tracking-[-0.03em] text-slate-950">기본 정보</h2>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="학년도">
@@ -203,22 +193,27 @@ export function AssessmentClient() {
           <Field label="교사가 제시한 과제 설명">
             <textarea className={`${inputClass} min-h-36 resize-y`} value={assignment.teacherInstruction} onChange={(event) => update("teacherInstruction", event.target.value)} placeholder="안내문을 가능한 한 그대로 붙여 넣으세요." />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="평가 기준 / 루브릭 (권장)">
-              <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.rubricText} onChange={(event) => update("rubricText", event.target.value)} placeholder="배점, 평가요소, 수행수준 등" />
-            </Field>
-            <Field label="성취기준 코드 또는 문구 (선택)">
-              <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.achievementStandardText} onChange={(event) => update("achievementStandardText", event.target.value)} placeholder="모르면 비워 두세요. 임의 코드는 생성하지 않습니다." />
-            </Field>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="필수 포함 요소"><input className={inputClass} value={assignment.requiredElements} onChange={(event) => update("requiredElements", event.target.value)} /></Field>
-            <Field label="분량"><input className={inputClass} value={assignment.lengthRule} onChange={(event) => update("lengthRule", event.target.value)} placeholder="예: 1500~2000자" /></Field>
-            <Field label="제출 형식"><input className={inputClass} value={assignment.formatRule} onChange={(event) => update("formatRule", event.target.value)} placeholder="예: 보고서 PDF" /></Field>
-          </div>
-          <Field label="학생의 주장 / 조사한 내용 (권장)">
-            <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.studentIdeas} onChange={(event) => update("studentIdeas", event.target.value)} placeholder="본인의 생각을 적으면 AI가 임의로 입장을 바꾸지 않고 중심 내용으로 사용합니다." />
-          </Field>
+          <details className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <summary className="cursor-pointer font-black text-slate-800">추가 정보</summary>
+            <div className="mt-4 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="평가 기준 / 루브릭">
+                  <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.rubricText} onChange={(event) => update("rubricText", event.target.value)} placeholder="배점, 평가요소, 수행수준" />
+                </Field>
+                <Field label="성취기준">
+                  <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.achievementStandardText} onChange={(event) => update("achievementStandardText", event.target.value)} />
+                </Field>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field label="필수 포함 요소"><input className={inputClass} value={assignment.requiredElements} onChange={(event) => update("requiredElements", event.target.value)} /></Field>
+                <Field label="분량"><input className={inputClass} value={assignment.lengthRule} onChange={(event) => update("lengthRule", event.target.value)} placeholder="1500~2000자" /></Field>
+                <Field label="제출 형식"><input className={inputClass} value={assignment.formatRule} onChange={(event) => update("formatRule", event.target.value)} placeholder="보고서 PDF" /></Field>
+              </div>
+              <Field label="내 주장 / 조사 내용">
+                <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.studentIdeas} onChange={(event) => update("studentIdeas", event.target.value)} />
+              </Field>
+            </div>
+          </details>
         </div>
 
         {error ? <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</p> : null}
@@ -274,19 +269,6 @@ export function AssessmentClient() {
 
       {verification ? <VerificationPanel result={verification} /> : null}
 
-      {routes.length ? (
-        <details className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-          <summary className="cursor-pointer font-black text-slate-800">AI Router 실행 정보</summary>
-          <div className="mt-4 space-y-3">
-            {routes.map((route, index) => (
-              <div className="rounded-xl bg-slate-50 p-3" key={`${route.model}-${index}`}>
-                <p className="font-bold text-slate-800">{index + 1}단계 · {route.model}</p>
-                <p className="mt-1 leading-6">{route.reason}</p>
-              </div>
-            ))}
-          </div>
-        </details>
-      ) : null}
     </div>
   );
 }
@@ -351,7 +333,6 @@ function VerificationPanel({ result }: { result: VerificationWithScore }) {
           </button>
         </div>
       ) : null}
-      <p className="mt-5 text-xs leading-5 text-slate-500">이 점수는 학교 성적 예측치가 아니라 명세에 정의된 내부 품질검사 점수입니다. 웹 검증이 필요한 사실은 확인 전 확정하지 않습니다.</p>
     </section>
   );
 }

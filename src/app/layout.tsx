@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { AppShell } from "@/components/app-shell";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
 import "./globals.css";
@@ -32,12 +33,15 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
+const themeBootScript = `(()=>{try{const saved=localStorage.getItem("assessment-theme");const theme=saved==="dark"||saved==="light"?saved:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme}catch{document.documentElement.dataset.theme="light"}})()`;
+
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: themeBootScript }} /></head>
       <body>
         <ServiceWorkerRegister />
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

@@ -60,7 +60,7 @@ export function InstallAppButton() {
     <>
       <button
         aria-label="수행평가 도우미 앱 설치"
-        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-50 inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-xl shadow-violet-950/25 transition hover:bg-violet-700 active:scale-[0.98] sm:static sm:min-h-11 sm:rounded-xl sm:px-4 sm:py-2.5 sm:shadow-sm"
+        className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-violet-700 active:scale-[0.98]"
         onClick={() => void install()}
         type="button"
       >

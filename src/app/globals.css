@@ -44,3 +44,48 @@ summary:focus-visible {
 ::selection {
   background: rgba(124, 58, 237, 0.18);
 }
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+html[data-theme="dark"] body {
+  background-image: radial-gradient(circle at 15% 5%, rgba(124, 58, 237, 0.18), transparent 28rem);
+}
+
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-white\/90,
+html[data-theme="dark"] .bg-white\/95,
+html[data-theme="dark"] .bg-white\/\[\.95\] {
+  background-color: #172033 !important;
+}
+
+html[data-theme="dark"] .bg-slate-50,
+html[data-theme="dark"] .bg-slate-50\/60,
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .text-slate-950,
+html[data-theme="dark"] .text-slate-900,
+html[data-theme="dark"] .text-slate-800,
+html[data-theme="dark"] .text-slate-700 {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .text-slate-600,
+html[data-theme="dark"] .text-slate-500,
+html[data-theme="dark"] .text-slate-400 {
+  color: #aebbd0 !important;
+}
+
+html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .border-slate-100,
+html[data-theme="dark"] .border-violet-100 {
+  border-color: #334155 !important;
+}
