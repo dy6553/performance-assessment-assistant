@@ -1,5 +1,6 @@
 import { InstallAppButton } from "@/components/install-app-button";
 import { AssessmentClient } from "@/features/assessment/assessment-client";
+import { AssessmentQuickTools } from "@/features/assessment/assessment-quick-tools";
 
 export default function HomePage() {
   return (
@@ -14,7 +15,10 @@ export default function HomePage() {
         </div>
       </header>
 
-      <AssessmentClient />
+      <div className="space-y-8">
+        <AssessmentQuickTools />
+        <AssessmentClient />
+      </div>
     </main>
   );
 }
