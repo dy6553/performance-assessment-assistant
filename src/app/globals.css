@@ -56,10 +56,35 @@ html[data-theme="dark"] body {
 }
 
 html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-white\/80,
 html[data-theme="dark"] .bg-white\/90,
 html[data-theme="dark"] .bg-white\/95,
 html[data-theme="dark"] .bg-white\/\[\.95\] {
   background-color: #172033 !important;
+}
+
+html[data-theme="dark"] .bg-violet-50,
+html[data-theme="dark"] .bg-violet-50\/50,
+html[data-theme="dark"] .bg-violet-50\/60 {
+  background-color: #211b39 !important;
+}
+
+html[data-theme="dark"] .bg-sky-50\/60,
+html[data-theme="dark"] .bg-blue-50 {
+  background-color: #102a43 !important;
+}
+
+html[data-theme="dark"] .bg-emerald-50 {
+  background-color: #0d3029 !important;
+}
+
+html[data-theme="dark"] .bg-amber-50 {
+  background-color: #3a2b12 !important;
+}
+
+html[data-theme="dark"] .bg-red-50,
+html[data-theme="dark"] .bg-rose-50 {
+  background-color: #3b1822 !important;
 }
 
 html[data-theme="dark"] .bg-slate-50,
@@ -88,4 +113,27 @@ html[data-theme="dark"] .border-slate-200,
 html[data-theme="dark"] .border-slate-100,
 html[data-theme="dark"] .border-violet-100 {
   border-color: #334155 !important;
+}
+
+html[data-theme="dark"] .text-violet-700,
+html[data-theme="dark"] .text-violet-600,
+html[data-theme="dark"] .text-blue-700 {
+  color: #c4b5fd !important;
+}
+
+html[data-theme="dark"] .text-emerald-900,
+html[data-theme="dark"] .text-emerald-800,
+html[data-theme="dark"] .text-emerald-700 {
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="dark"] .text-amber-900,
+html[data-theme="dark"] .text-amber-800 {
+  color: #fde68a !important;
+}
+
+html[data-theme="dark"] .text-red-700,
+html[data-theme="dark"] .text-rose-800,
+html[data-theme="dark"] .text-rose-700 {
+  color: #fda4af !important;
 }

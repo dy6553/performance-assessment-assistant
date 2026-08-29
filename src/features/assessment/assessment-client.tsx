@@ -2,6 +2,9 @@
 
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 
+import { CopyButton } from "@/components/copy-button";
+import { readApiResponse } from "@/lib/http/client-response";
+
 import type {
   AnalysisResult,
   AssignmentInput,
@@ -76,11 +79,11 @@ export function AssessmentClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assignment }),
       });
-      const payload = (await response.json()) as {
+      const payload = await readApiResponse<{
         data?: AnalysisResult;
         route?: RouteMeta;
         error?: string;
-      };
+      }>(response, "분석 결과를 만들지 못했습니다.");
       if (!response.ok || !payload.data || !payload.route) {
         throw new Error(payload.error || "분석 결과를 만들지 못했습니다.");
       }
@@ -103,11 +106,11 @@ export function AssessmentClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assignment, analysis }),
       });
-      const payload = (await response.json()) as {
+      const payload = await readApiResponse<{
         data?: DraftResult;
         route?: RouteMeta;
         error?: string;
-      };
+      }>(response, "초안을 만들지 못했습니다.");
       if (!response.ok || !payload.data || !payload.route) {
         throw new Error(payload.error || "초안을 만들지 못했습니다.");
       }
@@ -130,11 +133,11 @@ export function AssessmentClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assignment, analysis, draft }),
       });
-      const payload = (await response.json()) as {
+      const payload = await readApiResponse<{
         data?: VerificationWithScore;
         route?: RouteMeta;
         error?: string;
-      };
+      }>(response, "초안을 검증하지 못했습니다.");
       if (!response.ok || !payload.data || !payload.route) {
         throw new Error(payload.error || "초안을 검증하지 못했습니다.");
       }
@@ -269,7 +272,7 @@ export function AssessmentClient() {
           {draft.uncertainties.length ? <ResultCard className="mt-4" title="확실히 검증되지 않은 내용" items={draft.uncertainties} /> : null}
           <div className="mt-5 flex flex-wrap gap-3">
             <button className={primaryButtonClass} disabled={Boolean(loading)} onClick={verify} type="button">초안 독립 검증</button>
-            <button className={secondaryButtonClass} onClick={() => navigator.clipboard.writeText(draftText)} type="button">초안 복사</button>
+            <CopyButton className={secondaryButtonClass} label="초안 복사" text={draftText} />
           </div>
         </section>
       ) : null}
@@ -331,13 +334,7 @@ function VerificationPanel({ result }: { result: VerificationWithScore }) {
               </div>
             ))}
           </div>
-          <button
-            className={secondaryButtonClass}
-            onClick={() => void navigator.clipboard.writeText(revisedDraftText)}
-            type="button"
-          >
-            수정본 복사
-          </button>
+          <CopyButton className={secondaryButtonClass} label="수정본 복사" text={revisedDraftText} />
         </div>
       ) : null}
     </section>

@@ -1,5 +1,6 @@
 import { generateRequestSchema } from "@/features/assessment/schemas";
 import { generateDraft } from "@/features/assessment/server/service";
+import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -18,10 +19,6 @@ export async function POST(request: Request) {
     const result = await generateDraft(parsed.data.assignment, parsed.data.analysis);
     return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
-    return Response.json({ error: safeMessage(error) }, { status: 502 });
+    return Response.json({ error: publicApiError(error, "초안 작성 중 오류가 발생했습니다.") }, { status: 502 });
   }
-}
-
-function safeMessage(error: unknown) {
-  return error instanceof Error ? error.message : "초안 작성 중 오류가 발생했습니다.";
 }

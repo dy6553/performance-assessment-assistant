@@ -1,4 +1,5 @@
 import { extractPdfRubric } from "@/features/assessment/server/pdf-rubric";
+import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -43,7 +44,6 @@ export async function POST(request: Request) {
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "PDF를 판독하지 못했습니다.";
-    return Response.json({ error: message }, { status: 502 });
+    return Response.json({ error: publicApiError(error, "PDF를 판독하지 못했습니다.") }, { status: 502 });
   }
 }

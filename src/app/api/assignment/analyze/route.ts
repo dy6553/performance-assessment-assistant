@@ -1,5 +1,6 @@
 import { analyzeRequestSchema } from "@/features/assessment/schemas";
 import { analyzeAssignment } from "@/features/assessment/server/service";
+import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -18,10 +19,6 @@ export async function POST(request: Request) {
     const result = await analyzeAssignment(parsed.data.assignment);
     return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
-    return Response.json({ error: safeMessage(error) }, { status: 502 });
+    return Response.json({ error: publicApiError(error, "과제 분석 중 오류가 발생했습니다.") }, { status: 502 });
   }
-}
-
-function safeMessage(error: unknown) {
-  return error instanceof Error ? error.message : "과제 분석 중 오류가 발생했습니다.";
 }

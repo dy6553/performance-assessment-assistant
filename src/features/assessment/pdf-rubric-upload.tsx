@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { readApiResponse } from "@/lib/http/client-response";
+
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 export function PdfRubricUpload({
@@ -30,12 +32,12 @@ export function PdfRubricUpload({
         method: "POST",
         body: formData,
       });
-      const payload = (await response.json()) as {
+      const payload = await readApiResponse<{
         rubricText?: string;
         pages?: number;
         uncertainText?: string[];
         error?: string;
-      };
+      }>(response, "평가표를 판독하지 못했습니다.");
       if (!response.ok || !payload.rubricText) {
         throw new Error(payload.error || "평가표를 판독하지 못했습니다.");
       }

@@ -226,12 +226,13 @@ function inferCurriculum(assignment: AssignmentInput): AnalysisResult["curriculu
 
 function calculateReadiness(result: VerificationResult): number {
   const weights = {
-    requirementCheck: 25,
-    curriculumCheck: 20,
-    rubricCheck: 20,
+    requirementCheck: 22,
+    curriculumCheck: 15,
+    rubricCheck: 18,
     logicCheck: 15,
     factSourceCheck: 15,
     formatCheck: 5,
+    gradeLevelCheck: 10,
   } as const;
 
   const factor = (status: VerificationStatus) => {
