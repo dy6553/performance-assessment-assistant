@@ -188,12 +188,9 @@ export function AssessmentClient() {
           </Field>
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="교과">
-            <input className={inputClass} value={assignment.subject} onChange={(event) => update("subject", event.target.value)} placeholder="예: 사회" />
-          </Field>
-          <Field label="과목명">
-            <input className={inputClass} value={assignment.course} onChange={(event) => update("course", event.target.value)} placeholder="예: 통합사회2" />
+        <div className="mt-4">
+          <Field label="과목">
+            <input className={inputClass} value={assignment.subject} onChange={(event) => update("subject", event.target.value)} placeholder="예: 통합사회1" />
           </Field>
         </div>
 
