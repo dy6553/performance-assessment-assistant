@@ -85,7 +85,7 @@ async function runStructured<T>({
   temperature: number;
   signal?: AbortSignal;
 }): Promise<StructuredRun<T>> {
-  const apiKey = process.env.NVIDIA_API_KEY?.trim();
+  const apiKey = (process.env.NVIDIA_API_KEY || process.env.Nvidia_key)?.trim();
   if (!apiKey) throw new Error("NVIDIA_API_KEY가 설정되지 않았습니다.");
 
   const baseUrl = (process.env.NVIDIA_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/$/, "");
