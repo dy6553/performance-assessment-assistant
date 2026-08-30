@@ -8,11 +8,16 @@ type RefreshedSession = {
   expires_in: number;
 };
 
+type AccountStatusRow = {
+  account_status: "ACTIVE" | "LIMITED" | "SUSPENDED";
+};
+
 const SECONDARY_HOST = "wanhee-wonhee3.vercel.app";
 const CANONICAL_ORIGIN = "https://wanhee-two.vercel.app";
 
 const protectedPrefixes = [
   "/account",
+  "/admin",
   "/ai-tools",
   "/assignment",
   "/grader",
@@ -55,6 +60,19 @@ export async function proxy(request: NextRequest) {
     request.cookies.delete(REFRESH_COOKIE);
   }
 
+  if (protectedRoute && accessToken && (await isSuspended(accessToken))) {
+    request.cookies.delete(ACCESS_COOKIE);
+    request.cookies.delete(REFRESH_COOKIE);
+    const response = pathname.startsWith("/api/")
+      ? NextResponse.json(
+          { error: "관리자에 의해 사용이 정지된 계정입니다." },
+          { status: 403, headers: { "Cache-Control": "private, no-store" } },
+        )
+      : NextResponse.redirect(buildLoginUrl(request, `${pathname}${search}`, "suspended"));
+    clearSessionCookies(response);
+    return response;
+  }
+
   if (protectedRoute && !accessToken) {
     const response = pathname.startsWith("/api/")
       ? NextResponse.json(
@@ -84,9 +102,10 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-function buildLoginUrl(request: NextRequest, nextPath: string) {
+function buildLoginUrl(request: NextRequest, nextPath: string, reason?: string) {
   const loginUrl = new URL("/login", request.url);
   loginUrl.searchParams.set("next", nextPath);
+  if (reason) loginUrl.searchParams.set("reason", reason);
   return loginUrl;
 }
 
@@ -106,24 +125,51 @@ function expiresSoon(token: string): boolean {
   }
 }
 
-async function refreshSession(refreshToken: string): Promise<RefreshedSession | null> {
+function supabasePublicConfig() {
   const baseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.supabase_URL)?.trim();
   const publishableKey = (
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.sb_public_key
   )?.trim();
-
   if (!baseUrl || !publishableKey) return null;
+  return { baseUrl: baseUrl.replace(/\/$/, ""), publishableKey };
+}
+
+async function isSuspended(accessToken: string): Promise<boolean> {
+  const config = supabasePublicConfig();
+  if (!config) return false;
+
+  try {
+    const response = await fetch(`${config.baseUrl}/rest/v1/user_profiles?select=account_status&limit=1`, {
+      headers: {
+        Accept: "application/json",
+        apikey: config.publishableKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return false;
+    const rows = (await response.json()) as AccountStatusRow[];
+    return rows[0]?.account_status === "SUSPENDED";
+  } catch {
+    return false;
+  }
+}
+
+async function refreshSession(refreshToken: string): Promise<RefreshedSession | null> {
+  const config = supabasePublicConfig();
+  if (!config) return null;
 
   try {
     const response = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/auth/v1/token?grant_type=refresh_token`,
+      `${config.baseUrl}/auth/v1/token?grant_type=refresh_token`,
       {
         method: "POST",
         headers: {
           Accept: "application/json",
-          apikey: publishableKey,
+          apikey: config.publishableKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ refresh_token: refreshToken }),
