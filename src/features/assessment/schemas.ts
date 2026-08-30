@@ -41,6 +41,11 @@ export const topicRecommendationRequestSchema = z
     assignmentType: z.string().trim().min(1).max(120),
     teacherInstruction: z.string().trim().max(20_000).default(""),
     rubricText: z.string().trim().max(20_000).default(""),
+    interestField: z.string().trim().max(500).default(""),
+    desiredMajor: z.string().trim().max(300).default(""),
+    desiredCareer: z.string().trim().max(300).default(""),
+    additionalConditions: z.string().trim().max(2_000).default(""),
+    avoidTopics: z.array(z.string().trim().min(2).max(180)).max(12).default([]),
   })
   .superRefine((value, ctx) => {
     const maxGrade = value.schoolLevel === "초등학교" ? 6 : 3;
