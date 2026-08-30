@@ -25,6 +25,7 @@ const navigation: NavigationItem[] = [
   { href: "/assignment/setup/report", label: "보고서", icon: "document" },
   { href: "/assignment/setup/presentation", label: "발표", icon: "presentation" },
   { href: "/assignment/setup/experiment", label: "탐구", icon: "flask" },
+  { href: "/assignment/history", label: "기록", icon: "history" },
   { href: "/settings", label: "설정", icon: "settings" },
 ];
 
@@ -85,13 +86,13 @@ export function AppShell({ children, signedIn }: { children: ReactNode; signedIn
         aria-label="모바일 주요 메뉴"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-violet-100 bg-white/95 px-[max(.35rem,env(safe-area-inset-left))] pb-[max(.4rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl md:hidden"
       >
-        <div className="mx-auto grid max-w-lg grid-cols-6">
+        <div className="mx-auto grid max-w-lg grid-cols-7">
           {navigation.map((item) => {
             const active = isActive(pathname, item);
             return (
               <Link
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[0.68rem] font-black transition active:scale-[0.97] ${
+                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[0.65rem] font-black transition active:scale-[0.97] ${
                   active ? "text-violet-700" : "text-slate-400"
                 }`}
                 href={item.href}
