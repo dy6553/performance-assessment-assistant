@@ -1,5 +1,7 @@
 import "server-only";
 
+import { headers } from "next/headers";
+
 export type AgentTask =
   | "task_parser"
   | "strategy"
@@ -69,7 +71,7 @@ export type ModelCatalogRefresh = {
 export async function routeModel({
   task,
   inputCharacters = 0,
-  preferSpeed = false,
+  preferSpeed,
 }: {
   task: AgentTask;
   inputCharacters?: number;
@@ -89,7 +91,8 @@ export async function routeModel({
     throw new Error("현재 NVIDIA API에서 사용 가능한 승인 모델이 없습니다.");
   }
 
-  const preferHigh = !preferSpeed && (task !== "task_parser" || inputCharacters > 24_000);
+  const speedPreferred = preferSpeed ?? (await requestPrefersFastResponse());
+  const preferHigh = !speedPreferred && (task !== "task_parser" || inputCharacters > 24_000);
 
   const ranked = [...candidates].sort((a, b) => {
     const aAffinity = a.taskAffinity.includes(task) ? 1 : 0;
@@ -114,7 +117,7 @@ export async function routeModel({
     fallback,
     reason: [
       "Supabase Model Registry에서 승인 Provider/Model, 비중국계, 학생 데이터 정책, 보안·개인정보 검토, production approval을 Hard Filter로 적용했습니다.",
-      preferSpeed
+      speedPreferred
         ? "빠른 응답 모드가 켜져 있어 task affinity를 지키면서 효율 tier를 우선했습니다."
         : preferHigh
           ? "정확도 우선 작업이라 고품질 tier와 task affinity를 우선했습니다."
@@ -162,6 +165,15 @@ export async function refreshModelCatalog(): Promise<ModelCatalogRefresh> {
   const observedAt = new Date().toISOString();
   const synced = await syncCatalogCandidates(catalogIds, observedAt);
   return { catalogIds, synced, observedAt };
+}
+
+async function requestPrefersFastResponse(): Promise<boolean> {
+  try {
+    const requestHeaders = await headers();
+    return requestHeaders.get("x-assessment-fast-response") === "1";
+  } catch {
+    return false;
+  }
 }
 
 async function loadApprovedRegistry(now = Date.now()): Promise<ModelRecord[]> {
