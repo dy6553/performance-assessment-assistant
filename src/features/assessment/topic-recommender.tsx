@@ -13,14 +13,15 @@ import {
   initialAssignment,
   type AssignmentTypeValue,
 } from "@/features/assessment/assessment-flow";
-import type { AssignmentInput, TopicRecommendationResult } from "@/features/assessment/schemas";
+import type {
+  AssignmentInput,
+  TopicRecommendationRequest,
+  TopicRecommendationResult,
+} from "@/features/assessment/schemas";
 import { readAssignmentDefaultPreferences } from "@/lib/client-preferences";
 import { readApiResponse } from "@/lib/http/client-response";
 
-type TopicForm = Pick<
-  AssignmentInput,
-  "curriculum" | "schoolLevel" | "grade" | "subject" | "course" | "assignmentType" | "teacherInstruction" | "rubricText"
->;
+type TopicForm = Omit<TopicRecommendationRequest, "avoidTopics">;
 
 const initialForm: TopicForm = {
   curriculum: initialAssignment.curriculum,
@@ -31,6 +32,10 @@ const initialForm: TopicForm = {
   assignmentType: initialAssignment.assignmentType,
   teacherInstruction: "",
   rubricText: "",
+  interestField: "",
+  desiredMajor: "",
+  desiredCareer: "",
+  additionalConditions: "",
 };
 
 export function TopicRecommender() {
@@ -38,6 +43,7 @@ export function TopicRecommender() {
   const [form, setForm] = useState<TopicForm>(initialForm);
   const [topics, setTopics] = useState<TopicRecommendationResult["topics"]>([]);
   const [loading, setLoading] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -74,29 +80,24 @@ export function TopicRecommender() {
     setError("");
   }
 
-  async function recommend() {
+  async function recommend(avoidTopics: string[] = []) {
     if (!form.subject.trim()) {
       setError("과목을 입력해 주세요.");
       return;
     }
 
+    const isRegeneration = avoidTopics.length > 0;
     setLoading(true);
+    setRegenerating(isRegeneration);
     setError("");
-    setTopics([]);
 
     try {
       const response = await fetch("/api/assignment/recommend-topic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          curriculum: form.curriculum,
-          schoolLevel: form.schoolLevel,
-          grade: form.grade,
-          subject: form.subject,
-          course: form.course,
-          assignmentType: form.assignmentType,
-          teacherInstruction: form.teacherInstruction,
-          rubricText: form.rubricText,
+          ...form,
+          avoidTopics,
         }),
       });
 
@@ -109,13 +110,29 @@ export function TopicRecommender() {
       setError(cause instanceof Error ? cause.message : "주제를 추천하지 못했습니다.");
     } finally {
       setLoading(false);
+      setRegenerating(false);
     }
   }
 
   function startWithTopic(topic: string) {
     const assignment: AssignmentInput = {
       ...initialAssignment,
-      ...form,
+      curriculum: form.curriculum,
+      schoolLevel: form.schoolLevel,
+      grade: form.grade,
+      subject: form.subject,
+      course: form.course,
+      assignmentType: form.assignmentType,
+      teacherInstruction: form.teacherInstruction,
+      rubricText: form.rubricText,
+      studentIdeas: [
+        form.interestField ? `관심 분야: ${form.interestField}` : "",
+        form.desiredMajor ? `희망 학과: ${form.desiredMajor}` : "",
+        form.desiredCareer ? `희망 직업: ${form.desiredCareer}` : "",
+        form.additionalConditions ? `주제 추천 조건: ${form.additionalConditions}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
       topic,
     };
 
@@ -135,16 +152,16 @@ export function TopicRecommender() {
     <div className="space-y-5">
       <section className="rounded-[2rem] border border-violet-200 bg-gradient-to-br from-violet-50 via-fuchsia-50/70 to-sky-50 p-5 shadow-sm sm:p-7">
         <span className="inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-700">AI 주제 추천</span>
-        <h2 className="mt-4 text-2xl font-black tracking-[-0.03em] text-slate-950">수행평가에 맞는 주제를 바로 찾아보세요.</h2>
+        <h2 className="mt-4 text-2xl font-black tracking-[-0.03em] text-slate-950">나에게 맞는 수행평가 주제를 찾아보세요.</h2>
         <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-          교육과정, 학년, 과목과 수행평가 유형을 기준으로 AI가 4~6개의 주제를 제안합니다. 교사 안내나 평가 기준을 넣으면 더 구체적으로 추천합니다.
+          교육과정과 과목뿐 아니라 관심 분야, 희망 학과·직업, 원하는 조건까지 반영해 4~6개의 주제를 제안합니다.
         </p>
       </section>
 
       <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white/90 shadow-sm">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="font-black text-slate-950">추천 조건</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">필수 정보는 과목이며, 나머지는 추천 정확도를 높이는 데 사용합니다.</p>
+          <p className="mt-1 text-sm font-medium text-slate-500">과목은 필수이며, 관심 분야와 진로를 적을수록 개인화된 주제를 추천합니다.</p>
         </div>
 
         <div className="grid gap-4 p-5 sm:grid-cols-2">
@@ -200,6 +217,54 @@ export function TopicRecommender() {
           </Field>
         </div>
 
+        <div className="border-t border-slate-100 bg-violet-50/40 p-5">
+          <div className="mb-4">
+            <h3 className="font-black text-slate-950">내 관심 분야와 진로</h3>
+            <p className="mt-1 text-sm font-medium leading-6 text-slate-500">아직 진로를 정하지 않았다면 관심 있는 것만 적어도 됩니다.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="관심 분야 (선택)">
+              <input
+                className={inputClass}
+                maxLength={500}
+                placeholder="예: 인공지능, 환경, 심리, 스포츠, 디자인"
+                value={form.interestField}
+                onChange={(event) => update("interestField", event.target.value)}
+              />
+            </Field>
+
+            <Field label="가고 싶은 학과 (선택)">
+              <input
+                className={inputClass}
+                maxLength={300}
+                placeholder="예: 컴퓨터공학과, 간호학과, 경제학과"
+                value={form.desiredMajor}
+                onChange={(event) => update("desiredMajor", event.target.value)}
+              />
+            </Field>
+
+            <Field label="희망 직업 (선택)">
+              <input
+                className={inputClass}
+                maxLength={300}
+                placeholder="예: 소프트웨어 개발자, 의사, 교사, 연구원"
+                value={form.desiredCareer}
+                onChange={(event) => update("desiredCareer", event.target.value)}
+              />
+            </Field>
+
+            <Field label="원하는 주제 조건 (선택)">
+              <textarea
+                className={`${inputClass} min-h-24 resize-y py-3`}
+                maxLength={2000}
+                placeholder="예: 자료를 구하기 쉬운 주제, 너무 흔하지 않은 주제, 실험 없이 조사로 가능한 주제"
+                value={form.additionalConditions}
+                onChange={(event) => update("additionalConditions", event.target.value)}
+              />
+            </Field>
+          </div>
+        </div>
+
         <div className="grid gap-4 border-t border-slate-100 p-5 lg:grid-cols-2">
           <Field label="교사 안내·과제 설명 (선택)">
             <textarea
@@ -229,7 +294,7 @@ export function TopicRecommender() {
             onClick={() => void recommend()}
             type="button"
           >
-            {loading ? "AI가 주제를 찾는 중..." : "AI로 주제 추천하기"}
+            {loading && !regenerating ? "AI가 주제를 찾는 중..." : "AI로 주제 추천하기"}
           </button>
           {error ? <p className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</p> : null}
         </div>
@@ -237,9 +302,19 @@ export function TopicRecommender() {
 
       {topics.length ? (
         <section aria-live="polite">
-          <div className="mb-3 px-1">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-600">추천 결과</p>
-            <h2 className="mt-1 text-xl font-black text-slate-950">마음에 드는 주제를 선택하세요.</h2>
+          <div className="mb-3 flex flex-col gap-3 px-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-600">추천 결과</p>
+              <h2 className="mt-1 text-xl font-black text-slate-950">마음에 드는 주제를 선택하세요.</h2>
+            </div>
+            <button
+              className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm transition hover:border-violet-300 hover:text-violet-700 disabled:cursor-wait disabled:opacity-60"
+              disabled={loading}
+              onClick={() => void recommend(topics.map((topic) => topic.title))}
+              type="button"
+            >
+              {regenerating ? "새 주제를 다시 찾는 중..." : "마음에 안 들어요 · 새로 추천"}
+            </button>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             {topics.map((topic, index) => (
