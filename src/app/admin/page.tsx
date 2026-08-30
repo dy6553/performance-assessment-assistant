@@ -17,19 +17,18 @@ const statusLabel = {
 
 export default async function AdminPage() {
   const admin = await requireAdmin();
-  const [users, ai, audits, assignmentCount, models] = await Promise.all([
-    admin.repository.listUsers(),
+  const [userStats, ai, audits, assignmentCount, models] = await Promise.all([
+    admin.repository.userStatusStats(),
     admin.repository.aiStats(),
     admin.repository.listAuditLogs(6),
     admin.repository.assignmentCount(),
     admin.repository.listModels(),
   ]);
 
-  const restrictedUsers = users.filter((user) => user.status !== "ACTIVE").length;
   const cards = [
-    ["전체 사용자", users.length],
-    ["활성 사용자", users.length - restrictedUsers],
-    ["제한·정지", restrictedUsers],
+    ["전체 사용자", userStats.total],
+    ["활성 사용자", userStats.active],
+    ["제한·정지", userStats.restricted],
     ["전체 수행평가", assignmentCount],
     ["오늘 AI 작업", ai.total],
     ["실패", ai.failed],
@@ -46,7 +45,7 @@ export default async function AdminPage() {
     {
       name: "Supabase",
       status: (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.supabase_URL) && (process.env.SUPABASE_SECRET_KEY || process.env.sb_secret_key) ? "ok" : "disconnected",
-      value: `${users.length}명`,
+      value: `${userStats.total}명`,
       label: "등록 사용자",
     },
     {
@@ -65,7 +64,7 @@ export default async function AdminPage() {
 
   const attentionItems = [
     ai.failed > 0 ? `AI 작업 실패 ${ai.failed}건` : null,
-    restrictedUsers > 0 ? `제한·정지 사용자 ${restrictedUsers}명` : null,
+    userStats.restricted > 0 ? `제한·정지 사용자 ${userStats.restricted}명` : null,
     ...serviceStates.filter((service) => service.status !== "ok").map((service) => `${service.name} ${statusLabel[service.status]}`),
   ].filter((item): item is string => Boolean(item));
 
