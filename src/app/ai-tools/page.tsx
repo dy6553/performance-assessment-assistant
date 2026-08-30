@@ -17,6 +17,14 @@ const tools = [
     className: "from-sky-50 to-cyan-50/70 border-sky-100",
     badgeClassName: "bg-sky-100 text-sky-700",
   },
+  {
+    href: "/grader",
+    eyebrow: "AI 채점",
+    title: "평가기준표 채점",
+    description: "평가기준표 PDF와 수행평가 결과물을 비교해 항목별 점수와 감점 이유를 계산합니다. 엄격도는 5단계로 조절할 수 있습니다.",
+    className: "from-emerald-50 to-teal-50/70 border-emerald-100",
+    badgeClassName: "bg-emerald-100 text-emerald-700",
+  },
 ] as const;
 
 export default function AiToolsPage() {
@@ -30,7 +38,7 @@ export default function AiToolsPage() {
         </p>
       </header>
 
-      <section className="mt-7 grid gap-4 sm:grid-cols-2" aria-label="AI 기능">
+      <section className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="AI 기능">
         {tools.map((tool) => (
           <Link
             className={`group min-h-64 rounded-[2rem] border bg-gradient-to-br p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg active:scale-[0.99] ${tool.className}`}
