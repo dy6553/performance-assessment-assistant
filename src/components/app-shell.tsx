@@ -20,7 +20,7 @@ const navigation: NavigationItem[] = [
     href: "/ai-tools",
     label: "AI",
     icon: "sparkles",
-    activePrefixes: ["/ai-tools", "/topic-recommender", "/assignment/setup/auto"],
+    activePrefixes: ["/ai-tools", "/topic-recommender", "/assignment/setup/auto", "/grader"],
   },
   { href: "/assignment/setup/report", label: "보고서", icon: "document" },
   { href: "/assignment/setup/presentation", label: "발표", icon: "presentation" },
@@ -34,16 +34,16 @@ function isActive(pathname: string, item: NavigationItem) {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, signedIn }: { children: ReactNode; signedIn: boolean }) {
   const pathname = usePathname();
 
   return (
     <div className="min-h-dvh text-slate-950">
       <header className="sticky top-0 z-40 border-b border-violet-100 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link className="inline-flex items-center gap-2 font-black" href="/">
-            <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-violet-600 to-sky-500 text-sm text-white shadow-md">수행</span>
-            <span className="text-lg">수행평가 도우미</span>
+          <Link className="inline-flex min-w-0 items-center gap-2 font-black" href="/">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-600 to-sky-500 text-sm text-white shadow-md">수행</span>
+            <span className="truncate text-lg">수행평가 도우미</span>
           </Link>
 
           <nav aria-label="주요 메뉴" className="hidden items-center gap-1 md:flex">
@@ -67,8 +67,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="ml-2 flex shrink-0 items-center gap-1.5 sm:gap-2">
             <ThemeToggle compact />
+            <Link
+              className="inline-flex min-h-10 items-center rounded-full bg-gradient-to-r from-violet-50 to-fuchsia-50 px-3 py-2 text-xs font-black text-violet-800 transition active:scale-[0.97]"
+              href={signedIn ? "/account" : "/login"}
+            >
+              {signedIn ? "내 계정" : "로그인"}
+            </Link>
           </div>
         </div>
       </header>
