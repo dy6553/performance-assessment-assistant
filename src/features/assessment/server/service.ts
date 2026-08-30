@@ -208,20 +208,48 @@ export async function verifyDraft(
     "현재 이 검증 단계에는 외부 웹 검색 도구가 없다. 따라서 최신 통계·법·정책·연구·현재 상황처럼 외부 확인이 필요한 핵심 사실은 PASS로 확정하지 말고 NEEDS_WEB_VERIFICATION으로 표시한다.",
     "공식 출처가 없는 성취기준 코드를 확정하지 않는다.",
     "FAIL/PARTIAL 문제를 안전하게 고칠 수 있으면 revisedDraft에 수정본을 반환하되 새로운 미검증 사실을 추가하지 않는다.",
+    "revisedDraft를 반환할 때는 반드시 원래 초안과 동일하게 title, thesisOrGoal, sections, claimCandidates, sourceNeeds, uncertainties의 6개 필드를 모두 포함한다.",
+    "수정본이 필요하지 않으면 revisedDraft는 반드시 null로 반환한다.",
+    "각 검사의 evidence, issues, fixes는 해당 내용이 없으면 빈 배열 []로 반환한다.",
     "JSON 객체 하나만 출력한다.",
   ].join("\n");
+
+  const checkContract = {
+    status: "PASS | PARTIAL | FAIL | NEEDS_WEB_VERIFICATION",
+    evidence: ["초안의 실제 위치 또는 판단 근거"],
+    issues: ["문제점"],
+    fixes: ["수정 방법"],
+  };
+  const outputContract = {
+    requirementCheck: checkContract,
+    curriculumCheck: checkContract,
+    rubricCheck: checkContract,
+    logicCheck: checkContract,
+    factSourceCheck: checkContract,
+    formatCheck: checkContract,
+    gradeLevelCheck: checkContract,
+    revisedDraft: {
+      title: "수정된 제목",
+      thesisOrGoal: "수정된 핵심 주장 또는 목표",
+      sections: [{ heading: "소제목", body: "수정된 본문" }],
+      claimCandidates: ["사실검증이 필요한 핵심 주장"],
+      sourceNeeds: ["추가로 공식 출처가 필요한 주장/자료"],
+      uncertainties: ["확실히 검증되지 않은 내용"],
+    },
+    summary: "전체 검증 결과 요약",
+  };
 
   const run = await generateStructured({
     taskName: "assignment_verification",
     model: route.model,
     fallbackModel: route.fallback,
     schema: verificationResultSchema,
-    maxTokens: 10_000,
+    maxTokens: 8_000,
     temperature: 0.08,
     messages: [
       {
         role: "system",
-        content: `${system}\n\n각 검사 형식: ${JSON.stringify({ status: "PASS | PARTIAL | FAIL | NEEDS_WEB_VERIFICATION", evidence: ["근거 위치"], issues: ["문제"], fixes: ["수정 방법"] })}`,
+        content: `${system}\n\n출력 계약(키 이름과 자료형을 그대로 지킬 것):\n${JSON.stringify(outputContract)}`,
       },
       { role: "user", content: JSON.stringify({ assignment, analysis, draft }) },
     ],
