@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { AdminNav } from "@/features/admin/admin-nav";
@@ -15,9 +16,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             {admin.role === "SUPER_ADMIN" ? "최고 관리자" : "관리자"}
           </p>
         </div>
-        <a className="text-sm font-black text-violet-700" href="/">
+        <Link className="text-sm font-black text-violet-700" href="/">
           사용자 화면으로 돌아가기 →
-        </a>
+        </Link>
       </div>
       <AdminNav />
       {children}
