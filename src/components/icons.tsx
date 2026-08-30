@@ -4,6 +4,7 @@ export type IconName =
   | "document"
   | "presentation"
   | "flask"
+  | "history"
   | "settings"
   | "chevron-left"
   | "check";
@@ -32,6 +33,12 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
         <>
           <path d="M9 3h6M10 3v6l-5 8.5A2.3 2.3 0 0 0 7 21h10a2.3 2.3 0 0 0 2-3.5L14 9V3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
           <path d="M7.5 16h9" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        </>
+      ) : name === "history" ? (
+        <>
+          <path d="M4 6v5h5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+          <path d="M5.5 10.5A7.5 7.5 0 1 1 6 16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+          <path d="M12 8v4l3 2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
         </>
       ) : name === "settings" ? (
         <>
