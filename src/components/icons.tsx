@@ -1,10 +1,38 @@
-export type IconName = "home" | "settings" | "chevron-left" | "check";
+export type IconName =
+  | "home"
+  | "sparkles"
+  | "document"
+  | "presentation"
+  | "flask"
+  | "settings"
+  | "chevron-left"
+  | "check";
 
 export function Icon({ name, className = "size-5" }: { name: IconName; className?: string }) {
   return (
     <svg aria-hidden="true" className={className} fill="none" viewBox="0 0 24 24">
       {name === "home" ? (
         <path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      ) : name === "sparkles" ? (
+        <>
+          <path d="M12 3l1.4 3.6L17 8l-3.6 1.4L12 13l-1.4-3.6L7 8l3.6-1.4z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
+          <path d="M18.5 13.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8zM5.5 14.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.6" />
+        </>
+      ) : name === "document" ? (
+        <>
+          <path d="M6 3h8l4 4v14H6z" stroke="currentColor" strokeLinejoin="round" strokeWidth="2" />
+          <path d="M14 3v5h5M9 12h6M9 16h6" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        </>
+      ) : name === "presentation" ? (
+        <>
+          <rect x="4" y="4" width="16" height="11" rx="2" stroke="currentColor" strokeWidth="2" />
+          <path d="M12 15v5M8.5 20h7M8 8h8M8 11h5" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        </>
+      ) : name === "flask" ? (
+        <>
+          <path d="M9 3h6M10 3v6l-5 8.5A2.3 2.3 0 0 0 7 21h10a2.3 2.3 0 0 0 2-3.5L14 9V3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+          <path d="M7.5 16h9" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        </>
       ) : name === "settings" ? (
         <>
           <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
