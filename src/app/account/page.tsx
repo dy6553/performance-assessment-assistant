@@ -7,10 +7,12 @@ import { getAuthenticatedUser } from "@/lib/supabase/server/auth";
 import { getCurrentUserProfile } from "@/lib/supabase/server/profile";
 
 export default async function AccountPage() {
-  const user = await getAuthenticatedUser();
+  const [user, profile] = await Promise.all([
+    getAuthenticatedUser(),
+    getCurrentUserProfile(),
+  ]);
   if (!user) redirect("/login?next=/account");
 
-  const profile = await getCurrentUserProfile();
   const fallbackNickname =
     typeof user.user_metadata?.nickname === "string" && user.user_metadata.nickname.trim()
       ? user.user_metadata.nickname.trim()
