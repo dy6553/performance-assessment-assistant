@@ -72,7 +72,7 @@ export const defaultAssignmentPreferences: AssignmentDefaultPreferences = {
   curriculum: "2022 개정 교육과정",
   schoolLevel: "고등학교",
   grade: 1,
-  subject: "통합사회",
+  subject: "",
   assignmentType: "자동 분석",
 };
 
