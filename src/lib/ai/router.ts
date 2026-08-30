@@ -128,7 +128,7 @@ export async function routeModel({
 }
 
 export async function refreshModelCatalog(): Promise<ModelCatalogRefresh> {
-  const apiKey = process.env.NVIDIA_API_KEY?.trim();
+  const apiKey = (process.env.NVIDIA_API_KEY || process.env.Nvidia_key)?.trim();
   if (!apiKey) throw new Error("NVIDIA_API_KEY가 설정되지 않았습니다.");
 
   const baseUrl = (process.env.NVIDIA_BASE_URL?.trim() || "https://integrate.api.nvidia.com/v1").replace(/\/$/, "");
@@ -350,8 +350,10 @@ async function syncCatalogCandidates(
 }
 
 function readRegistryConfig(): { supabaseUrl: string; secretKey: string } {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/$/, "");
-  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim();
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.supabase_URL)
+    ?.trim()
+    .replace(/\/$/, "");
+  const secretKey = (process.env.SUPABASE_SECRET_KEY || process.env.sb_secret_key)?.trim();
   if (!supabaseUrl || !secretKey) {
     throw new Error("Supabase Model Registry 연결 환경변수가 설정되지 않았습니다.");
   }

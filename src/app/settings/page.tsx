@@ -11,9 +11,13 @@ const screens = [
 ] as const;
 
 export default function SettingsPage() {
+  const nvidiaApiKey = process.env.NVIDIA_API_KEY || process.env.Nvidia_key;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.supabase_URL;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.sb_secret_key;
+
   const connections = [
-    { name: "NVIDIA AI", connected: Boolean(process.env.NVIDIA_API_KEY), description: "평가표 판독과 전략·초안·검증에 사용합니다." },
-    { name: "Supabase", connected: Boolean(process.env.SUPABASE_SECRET_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL), description: "검토를 통과한 AI 모델 목록을 관리합니다." },
+    { name: "NVIDIA AI", connected: Boolean(nvidiaApiKey), description: "평가표 판독과 전략·초안·검증에 사용합니다." },
+    { name: "Supabase", connected: Boolean(supabaseSecretKey && supabaseUrl), description: "검토를 통과한 AI 모델 목록을 관리합니다." },
     { name: "Vercel", connected: Boolean(process.env.VERCEL || process.env.VERCEL_ENV), description: "웹 앱과 서버 API를 실행합니다." },
   ];
 
