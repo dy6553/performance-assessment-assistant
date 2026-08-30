@@ -69,9 +69,11 @@ export type ModelCatalogRefresh = {
 export async function routeModel({
   task,
   inputCharacters = 0,
+  preferSpeed = false,
 }: {
   task: AgentTask;
   inputCharacters?: number;
+  preferSpeed?: boolean;
 }): Promise<ModelRoute> {
   const registry = await loadApprovedRegistry();
   if (!registry.length) {
@@ -87,7 +89,7 @@ export async function routeModel({
     throw new Error("현재 NVIDIA API에서 사용 가능한 승인 모델이 없습니다.");
   }
 
-  const preferHigh = task !== "task_parser" || inputCharacters > 24_000;
+  const preferHigh = !preferSpeed && (task !== "task_parser" || inputCharacters > 24_000);
 
   const ranked = [...candidates].sort((a, b) => {
     const aAffinity = a.taskAffinity.includes(task) ? 1 : 0;
@@ -112,14 +114,16 @@ export async function routeModel({
     fallback,
     reason: [
       "Supabase Model Registry에서 승인 Provider/Model, 비중국계, 학생 데이터 정책, 보안·개인정보 검토, production approval을 Hard Filter로 적용했습니다.",
-      preferHigh
-        ? "정확도 우선 작업이라 고품질 tier와 task affinity를 우선했습니다."
-        : "구조화 분석 작업이라 검증된 효율 tier를 우선했습니다.",
+      preferSpeed
+        ? "빠른 응답 모드가 켜져 있어 task affinity를 지키면서 효율 tier를 우선했습니다."
+        : preferHigh
+          ? "정확도 우선 작업이라 고품질 tier와 task affinity를 우선했습니다."
+          : "구조화 분석 작업이라 검증된 효율 tier를 우선했습니다.",
       availability.live
         ? availability.catalogSynced
           ? "NVIDIA 실시간 모델 카탈로그와 교집합을 확인했고 새 모델은 검증 대기 후보로 자동 동기화했습니다."
           : "NVIDIA 실시간 모델 카탈로그는 확인했지만 후보 Registry 동기화는 실패해 다음 실행에서 재시도합니다."
-        : "실시간 카탈로그 확인 실패 시 DB의 사전 승인 Registry만 사용했습니다.",
+        : "사용자 요청 경로에서는 모델 카탈로그 재동기화를 기다리지 않고 사전 승인 Registry를 즉시 사용합니다. 카탈로그 동기화는 예약 작업에서 수행합니다.",
     ].join(" "),
     registryPolicy: "hard-filtered",
     registrySource: "supabase",
@@ -292,26 +296,15 @@ async function getAvailableApprovedModels(
 ): Promise<AvailabilityCache> {
   if (availabilityCache && availabilityCache.expiresAt > now) return availabilityCache;
 
-  const approvedIds = new Set(registry.map((model) => model.id));
-
-  try {
-    const refresh = await refreshModelCatalog();
-    const liveIds = new Set(refresh.catalogIds.filter((id) => approvedIds.has(id)));
-    availabilityCache = {
-      ids: liveIds,
-      expiresAt: now + 60 * 60 * 1_000,
-      live: true,
-      catalogSynced: refresh.synced,
-    };
-  } catch {
-    availabilityCache = {
-      ids: approvedIds,
-      expiresAt: now + 10 * 60 * 1_000,
-      live: false,
-      catalogSynced: false,
-    };
-  }
-
+  // 모델 카탈로그 조회 + Supabase 동기화를 실제 학생 요청 앞에서 기다리면
+  // 콜드 스타트마다 불필요한 네트워크 왕복이 생긴다. 승인 Registry는 이미
+  // 예약 동기화 작업에서 관리되므로 요청 경로에서는 즉시 승인 후보를 사용한다.
+  availabilityCache = {
+    ids: new Set(registry.map((model) => model.id)),
+    expiresAt: now + 60 * 60 * 1_000,
+    live: false,
+    catalogSynced: false,
+  };
   return availabilityCache;
 }
 
