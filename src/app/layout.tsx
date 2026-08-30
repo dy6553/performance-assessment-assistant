@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/app-shell";
+import { PreferenceRuntime } from "@/components/preference-runtime";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
 import "./globals.css";
@@ -33,14 +34,15 @@ export const viewport: Viewport = {
   themeColor: "#7c3aed",
 };
 
-const themeBootScript = `(()=>{try{const saved=localStorage.getItem("assessment-theme");const theme=saved==="dark"||saved==="light"?saved:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme}catch{document.documentElement.dataset.theme="light"}})()`;
+const preferenceBootScript = `(()=>{try{const d=document.documentElement;const get=(key)=>localStorage.getItem(key);const saved=get("assessment-theme");const theme=saved==="dark"||saved==="light"?saved:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");const font=get("assessment-font-size");const motion=get("assessment-reduce-motion");d.dataset.theme=theme;d.dataset.fontSize=font==="small"||font==="large"?font:"default";d.dataset.reduceMotion=motion==="1"||(motion===null&&matchMedia("(prefers-reduced-motion: reduce)").matches)?"true":"false";d.dataset.highContrast=get("assessment-high-contrast")==="1"?"true":"false";d.dataset.largeControls=get("assessment-large-controls")==="1"?"true":"false";d.dataset.dataSaver=get("assessment-data-saver")==="1"?"true":"false";d.dataset.fastResponse=get("assessment-fast-response")==="1"?"true":"false";d.style.colorScheme=theme}catch{document.documentElement.dataset.theme="light"}})()`;
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="ko" suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: themeBootScript }} /></head>
+      <head><script dangerouslySetInnerHTML={{ __html: preferenceBootScript }} /></head>
       <body>
         <ServiceWorkerRegister />
+        <PreferenceRuntime />
         <AppShell>{children}</AppShell>
       </body>
     </html>

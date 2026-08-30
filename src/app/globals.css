@@ -96,6 +96,10 @@ html[data-theme="dark"] textarea {
   color: #f8fafc !important;
 }
 
+html[data-theme="dark"] .bg-slate-100 {
+  background-color: #243047 !important;
+}
+
 html[data-theme="dark"] .text-slate-950,
 html[data-theme="dark"] .text-slate-900,
 html[data-theme="dark"] .text-slate-800,
@@ -136,4 +140,65 @@ html[data-theme="dark"] .text-red-700,
 html[data-theme="dark"] .text-rose-800,
 html[data-theme="dark"] .text-rose-700 {
   color: #fda4af !important;
+}
+
+html[data-font-size="small"] {
+  font-size: 15px;
+}
+
+html[data-font-size="default"] {
+  font-size: 16px;
+}
+
+html[data-font-size="large"] {
+  font-size: 18px;
+}
+
+html[data-high-contrast="true"] .text-slate-500,
+html[data-high-contrast="true"] .text-slate-400 {
+  color: #334155 !important;
+}
+
+html[data-theme="dark"][data-high-contrast="true"] .text-slate-500,
+html[data-theme="dark"][data-high-contrast="true"] .text-slate-400 {
+  color: #e2e8f0 !important;
+}
+
+html[data-high-contrast="true"] .border-slate-200,
+html[data-high-contrast="true"] .border-slate-100 {
+  border-color: #64748b !important;
+}
+
+html[data-large-controls="true"] button,
+html[data-large-controls="true"] a,
+html[data-large-controls="true"] input,
+html[data-large-controls="true"] select,
+html[data-large-controls="true"] textarea {
+  min-height: 3rem;
+}
+
+html[data-fast-response="true"] * {
+  transition-duration: 80ms !important;
+}
+
+html[data-data-saver="true"] body {
+  background-image: none;
+}
+
+html[data-data-saver="true"] .backdrop-blur-xl,
+html[data-data-saver="true"] .backdrop-blur-sm {
+  backdrop-filter: none !important;
+}
+
+html[data-reduce-motion="true"] {
+  scroll-behavior: auto;
+}
+
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
 }

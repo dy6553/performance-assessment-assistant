@@ -37,7 +37,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav aria-label="모바일 메뉴" className="fixed inset-x-0 bottom-0 z-50 border-t border-violet-100 bg-white/95 pb-[max(.4rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl md:hidden">
         <div className="mx-auto grid max-w-xs grid-cols-2">
           {navigation.map((item) => {
-            const active = pathname === item.href;
+            const active = item.href === "/"
+              ? pathname === "/"
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link aria-current={active ? "page" : undefined} className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-xs font-black ${active ? "text-violet-700" : "text-slate-400"}`} href={item.href} key={item.href}>
                 <Icon name={item.icon} />
