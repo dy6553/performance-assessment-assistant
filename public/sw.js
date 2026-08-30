@@ -1,4 +1,4 @@
-const CACHE_NAME = "performance-helper-shell-v2";
+const CACHE_NAME = "performance-helper-shell-v3";
 const HISTORY_CACHE_NAME = "performance-helper-history-v1";
 const HISTORY_PREFIX = "/__wanhee_assignment_history__/";
 const HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -23,6 +23,30 @@ self.addEventListener("activate", (event) => {
         .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME && key !== HISTORY_CACHE_NAME).map((key) => caches.delete(key)))),
       purgeExpiredHistory(),
     ]).then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification?.data?.url || `${self.location.origin}/assignment/workspace`;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          if ("navigate" in client && client.url !== targetUrl) {
+            try {
+              await client.navigate(targetUrl);
+            } catch {
+              // 이미 열려 있는 앱을 포커스하는 것만으로 충분합니다.
+            }
+          }
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+      return undefined;
+    }),
   );
 });
 
