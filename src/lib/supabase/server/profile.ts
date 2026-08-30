@@ -10,6 +10,8 @@ export type UserProfile = {
   school_name: string;
   school_key: string;
   age: number | null;
+  role: "USER" | "ADMIN" | "SUPER_ADMIN";
+  account_status: "ACTIVE" | "LIMITED" | "SUSPENDED";
   created_at: string;
   updated_at: string;
 };
@@ -53,7 +55,7 @@ async function profileRequest(path: string, init: RequestInit = {}) {
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   try {
     const response = await profileRequest(
-      "user_profiles?select=user_id,nickname,school_name,school_key,age,created_at,updated_at&limit=1",
+      "user_profiles?select=user_id,nickname,school_name,school_key,age,role,account_status,created_at,updated_at&limit=1",
     );
     if (!response.ok) return null;
 

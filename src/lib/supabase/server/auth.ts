@@ -24,6 +24,10 @@ type AuthErrorBody = {
   message?: string;
 };
 
+type AccountStatusRow = {
+  account_status: "ACTIVE" | "LIMITED" | "SUSPENDED";
+};
+
 function authConfig() {
   const baseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.supabase_URL)?.trim();
   const publishableKey = (
@@ -82,6 +86,26 @@ async function authRequest<T>(
   return { status: response.status, data: (await response.json()) as T };
 }
 
+async function readAccountStatus(accessToken: string): Promise<AccountStatusRow["account_status"] | null> {
+  const { baseUrl, publishableKey } = authConfig();
+  try {
+    const response = await fetch(`${baseUrl}/rest/v1/user_profiles?select=account_status&limit=1`, {
+      headers: {
+        Accept: "application/json",
+        apikey: publishableKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return null;
+    const rows = (await response.json()) as AccountStatusRow[];
+    return rows[0]?.account_status ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function setSessionTokenCookies(accessToken: string, refreshToken: string, expiresIn: number) {
   const store = await cookies();
   const safeExpiresIn = Number.isFinite(expiresIn)
@@ -109,6 +133,9 @@ export async function signInWithPassword(email: string, password: string) {
   });
 
   if (!response.data) return { ok: false as const, status: response.status };
+  if ((await readAccountStatus(response.data.access_token)) === "SUSPENDED") {
+    return { ok: false as const, status: 403 };
+  }
   await setSessionCookies(response.data);
   return { ok: true as const, user: response.data.user };
 }
@@ -125,7 +152,11 @@ export async function signUpWithPassword(email: string, password: string, nickna
 
   if (!response.data) return { ok: false as const, status: response.status };
   if (response.data.access_token && response.data.refresh_token && response.data.expires_in) {
-    await setSessionCookies(response.data as AuthSession);
+    const session = response.data as AuthSession;
+    if ((await readAccountStatus(session.access_token)) === "SUSPENDED") {
+      return { ok: false as const, status: 403 };
+    }
+    await setSessionCookies(session);
     return { ok: true as const, needsEmailConfirmation: false };
   }
 
@@ -142,6 +173,7 @@ export async function establishSessionFromConfirmation(
   try {
     const response = await authRequest<AuthUser>("user", { accessToken });
     if (!response.data) return false;
+    if ((await readAccountStatus(accessToken)) === "SUSPENDED") return false;
     await setSessionTokenCookies(accessToken, refreshToken, expiresIn);
     return true;
   } catch {
@@ -156,7 +188,9 @@ async function readAuthenticatedUser(): Promise<AuthUser | null> {
 
   try {
     const response = await authRequest<AuthUser>("user", { accessToken });
-    return response.data ?? null;
+    if (!response.data) return null;
+    if ((await readAccountStatus(accessToken)) === "SUSPENDED") return null;
+    return response.data;
   } catch {
     return null;
   }

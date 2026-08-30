@@ -16,6 +16,7 @@ export default async function AccountPage() {
       ? user.user_metadata.nickname.trim()
       : "학생";
   const nickname = profile?.nickname?.trim() || fallbackNickname;
+  const isAdmin = profile?.role === "ADMIN" || profile?.role === "SUPER_ADMIN";
 
   return (
     <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
@@ -46,6 +47,21 @@ export default async function AccountPage() {
         </section>
 
         <div className="space-y-5">
+          {isAdmin ? (
+            <section className="rounded-[2rem] border border-violet-200 bg-violet-50 p-6 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">관리자 모드</p>
+              <h2 className="mt-3 text-lg font-black text-violet-950">
+                {profile.role === "SUPER_ADMIN" ? "최고 관리자" : "관리자"}
+              </h2>
+              <p className="mt-3 text-sm font-semibold leading-6 text-violet-700">
+                사용자, AI 모델, 인프라 상태와 감사 로그를 시험온 관리자 모드처럼 관리할 수 있습니다.
+              </p>
+              <Link className="mt-5 flex min-h-12 items-center justify-center rounded-2xl bg-violet-700 px-4 font-black text-white" href="/admin">
+                관리자 모드 열기
+              </Link>
+            </section>
+          ) : null}
+
           <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">데이터 분리</p>
             <h2 className="mt-3 text-lg font-black text-slate-950">학교별 작업 공간</h2>
