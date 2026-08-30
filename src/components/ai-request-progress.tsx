@@ -28,22 +28,29 @@ function canUseNotifications() {
 function sendSystemNotification(label: string, failed: boolean) {
   if (!canUseNotifications() || Notification.permission !== "granted") return;
 
-  const notification = new Notification(
-    failed ? `${label}에 실패했습니다` : `${label}이 완료되었습니다`,
-    {
-      body: failed
-        ? "수행평가 도우미로 돌아와 오류 내용을 확인해 주세요."
-        : "결과가 준비되었습니다. 수행평가 도우미에서 확인해 주세요.",
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
-      tag: `assessment-${label}`,
-    },
-  );
+  // 일부 모바일 브라우저(특히 iOS/PWA 환경)는 Notification API를 노출하지만
+  // `new Notification()` 생성자를 허용하지 않습니다. 알림 실패가 AI 요청 자체를
+  // 실패시키지 않도록 best-effort 부가기능으로 격리합니다.
+  try {
+    const notification = new Notification(
+      failed ? `${label}에 실패했습니다` : `${label}이 완료되었습니다`,
+      {
+        body: failed
+          ? "수행평가 도우미로 돌아와 오류 내용을 확인해 주세요."
+          : "결과가 준비되었습니다. 수행평가 도우미에서 확인해 주세요.",
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        tag: `assessment-${label}`,
+      },
+    );
 
-  notification.onclick = () => {
-    window.focus();
-    notification.close();
-  };
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  } catch (error) {
+    console.info("System notification is unavailable in this browser context.", error);
+  }
 }
 
 export function AiRequestProgress() {
@@ -196,7 +203,7 @@ export function AiRequestProgress() {
       ) : null}
 
       {notificationPermission === "granted" && !progress.done ? (
-        <p className="mt-2 text-[11px] font-semibold text-emerald-600">작업이 끝나면 기기 알림으로 알려드립니다.</p>
+        <p className="mt-2 text-[11px] font-semibold text-emerald-600">작업이 끝나면 지원되는 환경에서 기기 알림으로 알려드립니다.</p>
       ) : null}
     </aside>
   );
