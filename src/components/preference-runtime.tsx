@@ -17,10 +17,12 @@ import {
   START_PAGE_KEY,
   START_SESSION_KEY,
   WAKE_KEY,
+  readAssignmentDefaultPreferences,
   safeCacheLimit,
   safeCleanupDays,
   safeFontSize,
   safeStartPage,
+  type StartPagePreference,
 } from "@/lib/client-preferences";
 
 const startPaths = {
@@ -31,6 +33,21 @@ const startPaths = {
   experiment: "/assignment/setup/experiment",
 } as const;
 
+const assignmentTypes = {
+  auto: "자동 분석",
+  report: "조사·보고서",
+  presentation: "발표·토론",
+  experiment: "실험·탐구",
+} as const;
+
+const assignmentFlowStorageKey = "assessment-wizard-draft-v1";
+const generatedResultKeys = [
+  "assessment-wizard-analysis-v1",
+  "assessment-wizard-generated-draft-v1",
+  "assessment-wizard-verification-v1",
+] as const;
+
+type AssignmentSlug = keyof typeof assignmentTypes;
 type WakeLockSentinel = { release: () => Promise<void> };
 type WakeLockNavigator = Navigator & {
   wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinel> };
@@ -53,21 +70,31 @@ export function PreferenceRuntime() {
     if (sessionStorage.getItem(START_SESSION_KEY) === "1") return;
 
     sessionStorage.setItem(START_SESSION_KEY, "1");
-    const target = startPaths[safeStartPage(localStorage.getItem(START_PAGE_KEY))];
-    if (target !== "/") router.replace(target);
+    const startPage = safeStartPage(localStorage.getItem(START_PAGE_KEY));
+    const target = startPaths[startPage];
+    if (target !== "/") {
+      seedAssignmentDraft(startPage);
+      router.replace(target);
+    }
   }, [pathname, router]);
 
   useEffect(() => {
-    function vibrateOnAction(event: MouseEvent) {
-      if (localStorage.getItem(HAPTIC_KEY) !== "1") return;
-      if (!("vibrate" in navigator)) return;
+    function handleAction(event: MouseEvent) {
       const target = event.target;
       if (!(target instanceof Element)) return;
+
+      const setupLink = target.closest('a[href^="/assignment/setup/"]');
+      if (setupLink instanceof HTMLAnchorElement) {
+        const slug = setupLink.getAttribute("href")?.split("/").filter(Boolean).at(-1);
+        if (isAssignmentSlug(slug)) seedAssignmentDraft(slug);
+      }
+
+      if (localStorage.getItem(HAPTIC_KEY) !== "1" || !("vibrate" in navigator)) return;
       if (target.closest("button, a, [role='button']")) navigator.vibrate(10);
     }
 
-    document.addEventListener("click", vibrateOnAction, { passive: true });
-    return () => document.removeEventListener("click", vibrateOnAction);
+    document.addEventListener("click", handleAction, { passive: true });
+    return () => document.removeEventListener("click", handleAction);
   }, []);
 
   useEffect(() => {
@@ -105,6 +132,35 @@ export function PreferenceRuntime() {
   }, []);
 
   return null;
+}
+
+function isAssignmentSlug(value: string | undefined): value is AssignmentSlug {
+  return value === "auto" || value === "report" || value === "presentation" || value === "experiment";
+}
+
+function seedAssignmentDraft(slugOrStartPage: AssignmentSlug | StartPagePreference) {
+  if (slugOrStartPage === "home") return;
+  const slug = slugOrStartPage as AssignmentSlug;
+  const defaults = readAssignmentDefaultPreferences();
+  const assignment = {
+    curriculum: defaults.curriculum,
+    schoolLevel: defaults.schoolLevel,
+    grade: defaults.grade,
+    subject: defaults.subject,
+    course: "",
+    assignmentType: assignmentTypes[slug],
+    topic: "",
+    teacherInstruction: "",
+    rubricText: "",
+    achievementStandardText: "",
+    requiredElements: "",
+    lengthRule: "",
+    formatRule: "",
+    studentIdeas: "",
+  };
+
+  sessionStorage.setItem(assignmentFlowStorageKey, JSON.stringify(assignment));
+  generatedResultKeys.forEach((key) => sessionStorage.removeItem(key));
 }
 
 function applyVisualPreferences() {
