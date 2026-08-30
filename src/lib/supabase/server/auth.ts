@@ -36,6 +36,22 @@ function authConfig() {
   return { baseUrl: baseUrl.replace(/\/$/, ""), publishableKey };
 }
 
+function appOrigin() {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+
+  const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (productionHost) {
+    return (productionHost.startsWith("http") ? productionHost : `https://${productionHost}`).replace(
+      /\/$/,
+      "",
+    );
+  }
+
+  if (process.env.NODE_ENV === "production") return "https://wanhee-two.vercel.app";
+  return "http://localhost:3000";
+}
+
 async function authRequest<T>(
   path: string,
   init: RequestInit & { accessToken?: string } = {},
@@ -66,16 +82,24 @@ async function authRequest<T>(
   return { status: response.status, data: (await response.json()) as T };
 }
 
-async function setSessionCookies(session: AuthSession) {
+async function setSessionTokenCookies(accessToken: string, refreshToken: string, expiresIn: number) {
   const store = await cookies();
-  store.set(ACCESS_COOKIE, session.access_token, {
+  const safeExpiresIn = Number.isFinite(expiresIn)
+    ? Math.min(Math.max(Math.floor(expiresIn), 60), 60 * 60 * 24)
+    : 60 * 60;
+
+  store.set(ACCESS_COOKIE, accessToken, {
     ...authCookieOptions,
-    maxAge: session.expires_in,
+    maxAge: safeExpiresIn,
   });
-  store.set(REFRESH_COOKIE, session.refresh_token, {
+  store.set(REFRESH_COOKIE, refreshToken, {
     ...authCookieOptions,
     maxAge: 60 * 60 * 24 * 30,
   });
+}
+
+async function setSessionCookies(session: AuthSession) {
+  await setSessionTokenCookies(session.access_token, session.refresh_token, session.expires_in);
 }
 
 export async function signInWithPassword(email: string, password: string) {
@@ -90,10 +114,14 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export async function signUpWithPassword(email: string, password: string, nickname: string) {
-  const response = await authRequest<Partial<AuthSession> & { user: AuthUser }>("signup", {
-    method: "POST",
-    body: JSON.stringify({ email, password, data: { nickname } }),
-  });
+  const confirmationRedirect = `${appOrigin()}/auth/callback`;
+  const response = await authRequest<Partial<AuthSession> & { user: AuthUser }>(
+    `signup?redirect_to=${encodeURIComponent(confirmationRedirect)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ email, password, data: { nickname } }),
+    },
+  );
 
   if (!response.data) return { ok: false as const, status: response.status };
   if (response.data.access_token && response.data.refresh_token && response.data.expires_in) {
@@ -102,6 +130,23 @@ export async function signUpWithPassword(email: string, password: string, nickna
   }
 
   return { ok: true as const, needsEmailConfirmation: true };
+}
+
+export async function establishSessionFromConfirmation(
+  accessToken: string,
+  refreshToken: string,
+  expiresIn: number,
+) {
+  if (!accessToken || !refreshToken) return false;
+
+  try {
+    const response = await authRequest<AuthUser>("user", { accessToken });
+    if (!response.data) return false;
+    await setSessionTokenCookies(accessToken, refreshToken, expiresIn);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function readAuthenticatedUser(): Promise<AuthUser | null> {
