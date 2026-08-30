@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { PreferenceRuntime } from "@/components/preference-runtime";
 import { SchoolDataScopeGuard } from "@/components/school-data-scope-guard";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
-import { ACCESS_COOKIE } from "@/lib/supabase/auth-cookies";
+import { ACCESS_COOKIE, SCHOOL_SCOPE_COOKIE } from "@/lib/supabase/auth-cookies";
 import { getCurrentUserProfile } from "@/lib/supabase/server/profile";
 
 import "./globals.css";
@@ -43,10 +43,19 @@ const preferenceBootScript = `(()=>{try{const d=document.documentElement;const g
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const cookieStore = await cookies();
   const signedIn = Boolean(cookieStore.get(ACCESS_COOKIE)?.value);
-  const profile = signedIn ? await getCurrentUserProfile() : null;
-  const dataScope = signedIn
-    ? `${profile?.user_id ?? "signed-in"}:${profile?.school_key || "unassigned"}`
-    : "signed-out";
+  let dataScope = "signed-out";
+
+  if (signedIn) {
+    // 보호된 경로에서는 proxy가 이미 계정 상태와 학교 범위를 한 번에 읽어 이 쿠키를 전달한다.
+    // 이전 버전 세션처럼 쿠키가 아직 없는 경우에만 한 번 프로필을 조회한다.
+    const cachedScope = cookieStore.get(SCHOOL_SCOPE_COOKIE)?.value;
+    if (cachedScope) {
+      dataScope = cachedScope;
+    } else {
+      const profile = await getCurrentUserProfile();
+      dataScope = `${profile?.user_id ?? "signed-in"}:${profile?.school_key || "unassigned"}`;
+    }
+  }
 
   return (
     <html lang="ko" suppressHydrationWarning>
