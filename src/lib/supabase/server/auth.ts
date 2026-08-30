@@ -3,7 +3,12 @@ import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
 
-import { ACCESS_COOKIE, authCookieOptions, REFRESH_COOKIE } from "../auth-cookies";
+import {
+  ACCESS_COOKIE,
+  authCookieOptions,
+  REFRESH_COOKIE,
+  SCHOOL_SCOPE_COOKIE,
+} from "../auth-cookies";
 
 export type AuthUser = {
   id: string;
@@ -187,10 +192,10 @@ async function readAuthenticatedUser(): Promise<AuthUser | null> {
   if (!accessToken) return null;
 
   try {
+    // 계정 정지 여부는 모든 보호 경로에서 proxy가 먼저 검사한다.
+    // 여기서는 Supabase Auth의 사용자 검증만 수행해 같은 요청의 프로필 상태 중복 조회를 없앤다.
     const response = await authRequest<AuthUser>("user", { accessToken });
-    if (!response.data) return null;
-    if ((await readAccountStatus(accessToken)) === "SUSPENDED") return null;
-    return response.data;
+    return response.data ?? null;
   } catch {
     return null;
   }
@@ -208,4 +213,5 @@ export async function signOutCurrentUser() {
 
   store.delete(ACCESS_COOKIE);
   store.delete(REFRESH_COOKIE);
+  store.delete(SCHOOL_SCOPE_COOKIE);
 }
