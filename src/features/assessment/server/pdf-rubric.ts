@@ -25,6 +25,15 @@ export type PdfRubricResult = z.infer<typeof rubricVisionSchema> & {
 
 export async function extractPdfRubric(bytes: Uint8Array): Promise<PdfRubricResult> {
   const pages = await renderPdfPages(bytes);
+  return extractRubricImages(pages.map((page) => `data:image/jpeg;base64,${page.toString("base64")}`));
+}
+
+export async function extractRubricImages(imageUrls: string[]): Promise<PdfRubricResult> {
+  if (imageUrls.length < 1) throw new Error("PDF에 페이지가 없습니다.");
+  if (imageUrls.length > MAX_PAGES) {
+    throw new Error(`평가표 PDF는 ${MAX_PAGES}페이지 이하로 올려 주세요.`);
+  }
+
   const model = process.env.NVIDIA_MODEL_VISION?.trim() || "nvidia/nemotron-nano-12b-v2-vl";
   const fallbackModel =
     process.env.NVIDIA_MODEL_VISION_FALLBACK?.trim() ||
@@ -54,16 +63,16 @@ export async function extractPdfRubric(bytes: Uint8Array): Promise<PdfRubricResu
         role: "user",
         content: [
           { type: "text", text: "첨부한 평가표 PDF의 모든 내용을 페이지 순서대로 판독하세요." },
-          ...pages.map((page) => ({
+          ...imageUrls.map((url) => ({
             type: "image_url" as const,
-            image_url: { url: `data:image/jpeg;base64,${page.toString("base64")}` },
+            image_url: { url },
           })),
         ],
       },
     ],
   });
 
-  return { ...run.data, pages: pages.length, model: run.model };
+  return { ...run.data, pages: imageUrls.length, model: run.model };
 }
 
 async function renderPdfPages(bytes: Uint8Array): Promise<Buffer[]> {
