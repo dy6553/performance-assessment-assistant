@@ -33,24 +33,38 @@ export async function proxy(request: NextRequest) {
   let accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   let refreshed: RefreshedSession | null = null;
+  let clearStaleSession = false;
 
-  if ((!accessToken || expiresSoon(accessToken)) && refreshToken) {
-    refreshed = await refreshSession(refreshToken);
-    accessToken = refreshed?.access_token;
-    if (refreshed) request.cookies.set(ACCESS_COOKIE, refreshed.access_token);
+  if (!accessToken || expiresSoon(accessToken)) {
+    if (refreshToken) {
+      refreshed = await refreshSession(refreshToken);
+      accessToken = refreshed?.access_token;
+      if (refreshed) {
+        request.cookies.set(ACCESS_COOKIE, refreshed.access_token);
+      } else {
+        clearStaleSession = true;
+      }
+    } else if (accessToken) {
+      accessToken = undefined;
+      clearStaleSession = true;
+    }
+  }
+
+  if (clearStaleSession) {
+    request.cookies.delete(ACCESS_COOKIE);
+    request.cookies.delete(REFRESH_COOKIE);
   }
 
   if (protectedRoute && !accessToken) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json(
-        { error: "로그인 후 이용해 주세요." },
-        { status: 401, headers: { "Cache-Control": "private, no-store" } },
-      );
-    }
+    const response = pathname.startsWith("/api/")
+      ? NextResponse.json(
+          { error: "로그인 후 이용해 주세요." },
+          { status: 401, headers: { "Cache-Control": "private, no-store" } },
+        )
+      : NextResponse.redirect(buildLoginUrl(request, `${pathname}${search}`));
 
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", `${pathname}${search}`);
-    return NextResponse.redirect(loginUrl);
+    if (clearStaleSession) clearSessionCookies(response);
+    return response;
   }
 
   const response = NextResponse.next({ request });
@@ -63,9 +77,22 @@ export async function proxy(request: NextRequest) {
       ...authCookieOptions,
       maxAge: 60 * 60 * 24 * 30,
     });
+  } else if (clearStaleSession) {
+    clearSessionCookies(response);
   }
 
   return response;
+}
+
+function buildLoginUrl(request: NextRequest, nextPath: string) {
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("next", nextPath);
+  return loginUrl;
+}
+
+function clearSessionCookies(response: NextResponse) {
+  response.cookies.delete(ACCESS_COOKIE);
+  response.cookies.delete(REFRESH_COOKIE);
 }
 
 function expiresSoon(token: string): boolean {
