@@ -24,7 +24,13 @@ export async function loginAction(
   }
 
   const result = await signInWithPassword(parsed.data.email, parsed.data.password).catch(() => null);
-  if (!result?.ok) return { message: "이메일 또는 비밀번호를 확인해 주세요." };
+  if (!result?.ok) {
+    return {
+      message: result?.status === 403
+        ? "관리자에 의해 사용이 정지된 계정입니다."
+        : "이메일 또는 비밀번호를 확인해 주세요.",
+    };
+  }
 
   redirect(safeNextPath(parsed.data.next));
 }
@@ -51,7 +57,11 @@ export async function signupAction(
   ).catch(() => null);
 
   if (!result?.ok) {
-    return { message: "회원가입하지 못했습니다. 이미 가입한 이메일인지 확인해 주세요." };
+    return {
+      message: result?.status === 403
+        ? "관리자에 의해 사용이 정지된 계정입니다."
+        : "회원가입하지 못했습니다. 이미 가입한 이메일인지 확인해 주세요.",
+    };
   }
 
   if (result.needsEmailConfirmation) {
