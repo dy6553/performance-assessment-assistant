@@ -18,7 +18,10 @@ export async function saveProfileAction(
   _state: ProfileFormState,
   formData: FormData,
 ): Promise<ProfileFormState> {
-  const user = await getAuthenticatedUser();
+  const [user, before] = await Promise.all([
+    getAuthenticatedUser(),
+    getCurrentUserProfile(),
+  ]);
   if (!user) return { message: "로그인이 필요합니다." };
 
   const nickname = String(formData.get("nickname") ?? "").trim();
@@ -34,8 +37,6 @@ export async function saveProfileAction(
   if (!Number.isInteger(age) || age < 6 || age > 100) {
     return { message: "나이를 올바르게 입력해 주세요." };
   }
-
-  const before = await getCurrentUserProfile();
 
   try {
     await updateCurrentUserProfile({ nickname, schoolName, age });

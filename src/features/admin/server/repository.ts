@@ -37,6 +37,12 @@ type AiRunRow = {
   created_at: string;
 };
 
+type UserStatusStats = {
+  total: number;
+  active: number;
+  restricted: number;
+};
+
 function readAdminConfig() {
   const baseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.supabase_URL)?.trim();
   const secretKey = (process.env.SUPABASE_SECRET_KEY || process.env.sb_secret_key)?.trim();
@@ -54,6 +60,15 @@ export class AdminRepository {
       limit: "1",
     });
     return rows[0] ?? null;
+  }
+
+  async userStatusStats(): Promise<UserStatusStats> {
+    const rows = await this.rest<Array<{ account_status: AccountStatus }>>("user_profiles", {
+      select: "account_status",
+      limit: "10000",
+    });
+    const active = rows.filter((row) => row.account_status === "ACTIVE").length;
+    return { total: rows.length, active, restricted: rows.length - active };
   }
 
   async listUsers(search = ""): Promise<AdminUserSummary[]> {
@@ -170,8 +185,7 @@ export class AdminRepository {
   }
 
   async assignmentCount(): Promise<number> {
-    const rows = await this.rest<Array<{ id: string }>>("assignments", { select: "id", limit: "10000" });
-    return rows.length;
+    return this.countRows("assignments");
   }
 
   async listModels(): Promise<AdminModelRecord[]> {
@@ -201,6 +215,26 @@ export class AdminRepository {
   ): Promise<T> {
     const params = new URLSearchParams(query);
     return this.request<T>(`/rest/v1/${table}${params.size ? `?${params}` : ""}`, init);
+  }
+
+  private async countRows(table: string): Promise<number> {
+    const response = await fetch(`${this.config.baseUrl}/rest/v1/${table}?select=id`, {
+      headers: {
+        Accept: "application/json",
+        apikey: this.config.secretKey,
+        ...(this.config.secretKey.split(".").length === 3
+          ? { Authorization: `Bearer ${this.config.secretKey}` }
+          : {}),
+        Prefer: "count=exact",
+        Range: "0-0",
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error(`ADMIN_COUNT_REQUEST_${response.status}`);
+    const total = response.headers.get("content-range")?.split("/").at(-1);
+    const parsed = Number(total);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
   private async request<T>(

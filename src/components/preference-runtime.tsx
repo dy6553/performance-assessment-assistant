@@ -66,6 +66,27 @@ export function PreferenceRuntime() {
   }, []);
 
   useEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    const fastFetch: typeof window.fetch = (input, init) => {
+      if (localStorage.getItem(FAST_RESPONSE_KEY) !== "1" || !isAssignmentApiRequest(input)) {
+        return originalFetch(input, init);
+      }
+
+      const headers = new Headers(input instanceof Request ? input.headers : undefined);
+      if (init?.headers) {
+        new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+      }
+      headers.set("x-assessment-fast-response", "1");
+      return originalFetch(input, { ...init, headers });
+    };
+
+    window.fetch = fastFetch;
+    return () => {
+      if (window.fetch === fastFetch) window.fetch = originalFetch;
+    };
+  }, []);
+
+  useEffect(() => {
     if (pathname !== "/") return;
     if (sessionStorage.getItem(START_SESSION_KEY) === "1") return;
 
@@ -132,6 +153,16 @@ export function PreferenceRuntime() {
   }, []);
 
   return null;
+}
+
+function isAssignmentApiRequest(input: RequestInfo | URL) {
+  try {
+    const rawUrl = input instanceof Request ? input.url : String(input);
+    const url = new URL(rawUrl, window.location.origin);
+    return url.origin === window.location.origin && url.pathname.startsWith("/api/assignment/");
+  } catch {
+    return false;
+  }
 }
 
 function isAssignmentSlug(value: string | undefined): value is AssignmentSlug {
