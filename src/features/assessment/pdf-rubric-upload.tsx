@@ -41,16 +41,23 @@ const documentOptions: Array<{
 export function PdfRubricUpload({
   disabled,
   onExtracted,
+  documentTypes,
 }: {
   disabled: boolean;
   onExtracted: (text: string) => void;
+  documentTypes?: DocumentType[];
 }) {
-  const [documentType, setDocumentType] = useState<DocumentType>("rubric");
+  const availableOptions = documentOptions.filter(
+    (option) => !documentTypes?.length || documentTypes.includes(option.value),
+  );
+  const safeOptions = availableOptions.length ? availableOptions : [documentOptions[0]];
+  const [documentType, setDocumentType] = useState<DocumentType>(safeOptions[0].value);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const selectedOption = documentOptions.find((option) => option.value === documentType) ?? documentOptions[0];
+  const selectedOption = safeOptions.find((option) => option.value === documentType) ?? safeOptions[0];
+  const singleType = safeOptions.length === 1;
 
   async function upload(file: File) {
     if (file.size > MAX_FILE_BYTES) {
@@ -108,32 +115,36 @@ export function PdfRubricUpload({
   return (
     <div className="rounded-2xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-4">
       <div>
-        <p className="font-black text-slate-900">수행평가 문서 PDF</p>
-        <p className="mt-1 text-xs font-bold text-slate-500">먼저 파일 종류를 선택하세요 · 최대 6페이지 · 20MB</p>
+        <p className="font-black text-slate-900">{singleType ? `${selectedOption.label} PDF` : "수행평가 문서 PDF"}</p>
+        <p className="mt-1 text-xs font-bold text-slate-500">
+          {singleType ? "PDF를 선택하면 AI가 평가항목과 배점을 판독합니다." : "먼저 파일 종류를 선택하세요."} · 최대 6페이지 · 20MB
+        </p>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2" role="group" aria-label="업로드할 파일 종류">
-        {documentOptions.map((option) => {
-          const active = documentType === option.value;
-          return (
-            <button
-              aria-pressed={active}
-              className={`rounded-2xl border p-3 text-left transition ${
-                active
-                  ? "border-violet-500 bg-violet-100 text-violet-950 shadow-sm"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-violet-200 hover:bg-violet-50/60"
-              }`}
-              disabled={disabled || busy}
-              key={option.value}
-              onClick={() => selectDocumentType(option.value)}
-              type="button"
-            >
-              <span className="block text-sm font-black">{option.label}</span>
-              <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{option.description}</span>
-            </button>
-          );
-        })}
-      </div>
+      {!singleType ? (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2" role="group" aria-label="업로드할 파일 종류">
+          {safeOptions.map((option) => {
+            const active = documentType === option.value;
+            return (
+              <button
+                aria-pressed={active}
+                className={`rounded-2xl border p-3 text-left transition ${
+                  active
+                    ? "border-violet-500 bg-violet-100 text-violet-950 shadow-sm"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-violet-200 hover:bg-violet-50/60"
+                }`}
+                disabled={disabled || busy}
+                key={option.value}
+                onClick={() => selectDocumentType(option.value)}
+                type="button"
+              >
+                <span className="block text-sm font-black">{option.label}</span>
+                <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{option.description}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/70 p-3">
         <div>
