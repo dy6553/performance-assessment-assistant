@@ -7,10 +7,10 @@ import { getAuthenticatedUser } from "@/lib/supabase/server/auth";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; reason?: string }>;
 }) {
   if (await getAuthenticatedUser()) redirect("/account");
-  const { next } = await searchParams;
+  const { next, reason } = await searchParams;
 
   return (
     <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
@@ -26,6 +26,12 @@ export default async function LoginPage({
           시험온과 같은 방식으로 Supabase 계정에 로그인합니다. 로그인 상태는 안전한 세션 쿠키로 유지됩니다.
         </p>
       </header>
+
+      {reason === "suspended" ? (
+        <div className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-extrabold text-rose-700">
+          관리자에 의해 사용이 정지된 계정입니다.
+        </div>
+      ) : null}
 
       <AuthForm nextPath={next ?? "/account"} />
 
