@@ -5,6 +5,17 @@ export const assessmentAnalysisStorageKey = "assessment-wizard-analysis-v1";
 export const assessmentDraftStorageKey = "assessment-wizard-generated-draft-v1";
 export const assessmentVerificationStorageKey = "assessment-wizard-verification-v1";
 
+export const assessmentStorageBaseKeys = [
+  assessmentFlowStorageKey,
+  assessmentAnalysisStorageKey,
+  assessmentDraftStorageKey,
+  assessmentVerificationStorageKey,
+] as const;
+
+export function scopedAssessmentStorageKey(baseKey: string, storageScope: string) {
+  return `${baseKey}::${storageScope}`;
+}
+
 export const assignmentTypeOptions = [
   {
     slug: "auto",
