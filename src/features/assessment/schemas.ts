@@ -169,28 +169,24 @@ export const draftResultSchema = z
   .strict();
 
 const checkStatusSchema = z.enum(["PASS", "PARTIAL", "FAIL", "NEEDS_WEB_VERIFICATION"]);
-const verificationCheckSchema = z
-  .object({
-    status: checkStatusSchema,
-    evidence: z.array(z.string().trim().min(1).max(900)).max(12),
-    issues: z.array(z.string().trim().min(1).max(900)).max(12),
-    fixes: z.array(z.string().trim().min(1).max(900)).max(12),
-  })
-  .strict();
+const verificationCheckSchema = z.object({
+  status: checkStatusSchema,
+  evidence: z.array(z.string().trim().min(1).max(900)).max(12).default([]),
+  issues: z.array(z.string().trim().min(1).max(900)).max(12).default([]),
+  fixes: z.array(z.string().trim().min(1).max(900)).max(12).default([]),
+});
 
-export const verificationResultSchema = z
-  .object({
-    requirementCheck: verificationCheckSchema,
-    curriculumCheck: verificationCheckSchema,
-    rubricCheck: verificationCheckSchema,
-    logicCheck: verificationCheckSchema,
-    factSourceCheck: verificationCheckSchema,
-    formatCheck: verificationCheckSchema,
-    gradeLevelCheck: verificationCheckSchema,
-    revisedDraft: draftResultSchema.nullable(),
-    summary: z.string().trim().min(1).max(1_500),
-  })
-  .strict();
+export const verificationResultSchema = z.object({
+  requirementCheck: verificationCheckSchema,
+  curriculumCheck: verificationCheckSchema,
+  rubricCheck: verificationCheckSchema,
+  logicCheck: verificationCheckSchema,
+  factSourceCheck: verificationCheckSchema,
+  formatCheck: verificationCheckSchema,
+  gradeLevelCheck: verificationCheckSchema,
+  revisedDraft: draftResultSchema.nullable().default(null),
+  summary: z.string().trim().min(1).max(1_500),
+});
 
 export const analyzeRequestSchema = z.object({ assignment: assignmentInputSchema }).strict();
 export const generateRequestSchema = z
