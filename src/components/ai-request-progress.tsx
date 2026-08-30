@@ -21,9 +21,39 @@ const assignmentTasks: Array<{
   { path: "/api/assignment/verify", label: "초안 독립 검증", expectedMs: 55_000 },
 ];
 
+function canUseNotifications() {
+  return typeof window !== "undefined" && "Notification" in window;
+}
+
+function sendSystemNotification(label: string, failed: boolean) {
+  if (!canUseNotifications() || Notification.permission !== "granted") return;
+
+  const notification = new Notification(
+    failed ? `${label}에 실패했습니다` : `${label}이 완료되었습니다`,
+    {
+      body: failed
+        ? "수행평가 도우미로 돌아와 오류 내용을 확인해 주세요."
+        : "결과가 준비되었습니다. 수행평가 도우미에서 확인해 주세요.",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: `assessment-${label}`,
+    },
+  );
+
+  notification.onclick = () => {
+    window.focus();
+    notification.close();
+  };
+}
+
 export function AiRequestProgress() {
   const [progress, setProgress] = useState<ProgressState | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
+
+  useEffect(() => {
+    setNotificationPermission(canUseNotifications() ? Notification.permission : "unsupported");
+  }, []);
 
   useEffect(() => {
     const originalFetch = window.fetch.bind(window);
@@ -52,25 +82,28 @@ export function AiRequestProgress() {
       try {
         const response = await originalFetch(input, init);
         const finishedAt = Date.now();
+        const failed = !response.ok;
         setNow(finishedAt);
         setProgress({
           label: task.label,
           startedAt,
           expectedMs: task.expectedMs,
           done: true,
-          failed: !response.ok,
+          failed,
         });
+        sendSystemNotification(task.label, failed);
         window.setTimeout(() => {
           setProgress((current) => current?.startedAt === startedAt ? null : current);
-        }, response.ok ? 1_200 : 3_500);
+        }, response.ok ? 2_500 : 4_500);
         return response;
       } catch (error) {
         const finishedAt = Date.now();
         setNow(finishedAt);
         setProgress({ label: task.label, startedAt, expectedMs: task.expectedMs, done: true, failed: true });
+        sendSystemNotification(task.label, true);
         window.setTimeout(() => {
           setProgress((current) => current?.startedAt === startedAt ? null : current);
-        }, 3_500);
+        }, 4_500);
 
         if (error instanceof TypeError) {
           throw new Error("서버와 연결이 끊겼습니다. 잠시 후 다시 시도해 주세요. 계속 실패하면 페이지를 새로고침한 뒤 다시 실행해 주세요.");
@@ -93,16 +126,25 @@ export function AiRequestProgress() {
   const view = useMemo(() => {
     if (!progress) return null;
     if (progress.done) {
-      return { percent: progress.failed ? 100 : 100, remainingSeconds: 0, delayed: false };
+      return { percent: 100, remainingSeconds: 0, delayed: false };
     }
 
     const elapsed = Math.max(0, now - progress.startedAt);
     const ratio = elapsed / progress.expectedMs;
-    // 실제 서버 진행률을 받을 수 없으므로 시간 기반 추정치입니다. 완료 전에는 95%에서 멈춥니다.
     const percent = Math.min(95, Math.max(3, Math.round((1 - Math.exp(-2.6 * ratio)) * 100)));
     const remainingSeconds = Math.max(0, Math.ceil((progress.expectedMs - elapsed) / 1_000));
     return { percent, remainingSeconds, delayed: elapsed > progress.expectedMs };
   }, [now, progress]);
+
+  async function enableNotifications() {
+    if (!canUseNotifications()) return;
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+    } catch {
+      setNotificationPermission(Notification.permission);
+    }
+  }
 
   if (!progress || !view) return null;
 
@@ -138,8 +180,23 @@ export function AiRequestProgress() {
           style={{ width: `${view.percent}%` }}
         />
       </div>
+
       {!progress.done ? (
         <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-400">진행률과 남은 시간은 실제 서버 단계가 아닌 평균 처리 시간을 기준으로 한 예상치입니다.</p>
+      ) : null}
+
+      {notificationPermission === "default" ? (
+        <button
+          className="mt-3 inline-flex min-h-9 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 px-3 text-xs font-black text-violet-700"
+          onClick={() => void enableNotifications()}
+          type="button"
+        >
+          완료 시 기기 알림 받기
+        </button>
+      ) : null}
+
+      {notificationPermission === "granted" && !progress.done ? (
+        <p className="mt-2 text-[11px] font-semibold text-emerald-600">작업이 끝나면 기기 알림으로 알려드립니다.</p>
       ) : null}
     </aside>
   );
