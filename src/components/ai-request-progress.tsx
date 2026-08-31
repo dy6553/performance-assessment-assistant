@@ -15,11 +15,12 @@ const assignmentTasks: Array<{
   path: string;
   label: string;
   expectedMs: number;
+  resultPath?: string;
 }> = [
   { path: "/api/assignment/recommend-topic", label: "AI 주제 추천", expectedMs: 20_000 },
   { path: "/api/assignment/analyze", label: "과제 분석", expectedMs: 35_000 },
-  { path: "/api/assignment/generate", label: "초안 작성", expectedMs: 45_000 },
-  { path: "/api/assignment/verify", label: "초안 독립 검증", expectedMs: 55_000 },
+  { path: "/api/assignment/generate", label: "초안 작성", expectedMs: 45_000, resultPath: "/assignment/draft" },
+  { path: "/api/assignment/verify", label: "초안 독립 검증", expectedMs: 55_000, resultPath: "/assignment/verification" },
 ];
 
 const topicOptionsStorageKey = "assessment-topic-reroll-options-v1";
@@ -204,6 +205,15 @@ export function AiRequestProgress() {
         setNow(finishedAt);
         setProgress({ label: task.label, startedAt, expectedMs: task.expectedMs, done: true, failed });
         void sendSystemNotification(task.label, failed);
+
+        if (!failed && task.resultPath && window.location.pathname === "/assignment/workspace") {
+          window.setTimeout(() => {
+            if (window.location.pathname === "/assignment/workspace") {
+              window.location.assign(task.resultPath!);
+            }
+          }, 900);
+        }
+
         window.setTimeout(() => {
           setProgress((current) => current?.startedAt === startedAt ? null : current);
         }, failed ? 5_000 : 4_000);
@@ -312,7 +322,7 @@ export function AiRequestProgress() {
                 {progress.failed
                   ? "화면의 오류 내용을 확인해 주세요."
                   : progress.done
-                    ? "결과가 준비되었습니다."
+                    ? "결과 페이지로 이동합니다."
                     : view.delayed
                       ? "예상 시간 초과 · 서버 응답 대기 중"
                       : `예상 약 ${view.remainingSeconds}초 남음`}
