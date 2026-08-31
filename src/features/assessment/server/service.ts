@@ -24,6 +24,13 @@ export async function recommendTopics(
   const route = await routeModel({
     task: "task_parser",
     inputCharacters: JSON.stringify(input).length,
+    context: {
+      subject: input.subject,
+      schoolLevel: input.schoolLevel,
+      grade: input.grade,
+      assignmentType: input.assignmentType,
+      format: input.course,
+    },
   });
 
   const system = [
@@ -69,6 +76,13 @@ export async function analyzeAssignment(assignment: AssignmentInput): Promise<Ru
   const route = await routeModel({
     task: "strategy",
     inputCharacters: JSON.stringify(assignment).length,
+    context: {
+      subject: assignment.subject,
+      schoolLevel: assignment.schoolLevel,
+      grade: assignment.grade,
+      assignmentType: assignment.assignmentType,
+      format: assignment.formatRule || assignment.course,
+    },
   });
 
   const userProvidedStandard = assignment.achievementStandardText.trim();
@@ -151,6 +165,13 @@ export async function generateDraft(
   const route = await routeModel({
     task: "writer",
     inputCharacters: JSON.stringify({ assignment, analysis }).length,
+    context: {
+      subject: assignment.subject,
+      schoolLevel: assignment.schoolLevel,
+      grade: assignment.grade,
+      assignmentType: assignment.assignmentType,
+      format: assignment.formatRule || analysis.requirements.format || assignment.course,
+    },
   });
 
   const system = [
@@ -198,6 +219,13 @@ export async function verifyDraft(
   const route = await routeModel({
     task: "logic_critic",
     inputCharacters: JSON.stringify({ assignment, analysis, draft }).length,
+    context: {
+      subject: assignment.subject,
+      schoolLevel: assignment.schoolLevel,
+      grade: assignment.grade,
+      assignmentType: assignment.assignmentType,
+      format: assignment.formatRule || analysis.requirements.format || assignment.course,
+    },
   });
 
   const system = [
