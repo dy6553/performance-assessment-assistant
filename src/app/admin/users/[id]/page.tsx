@@ -15,7 +15,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       <PageHeader
         backHref="/admin/users"
         eyebrow="관리자"
-        title={user.nickname || "사용자 상세"}
+        title={user.developerId ? `개발자 ${user.developerId}` : user.nickname || "사용자 상세"}
         description="계정 정보와 사용량을 확인하고 상태와 관리자 권한을 관리합니다."
       />
 
@@ -23,7 +23,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         <Card>
           <h2 className="text-lg font-black text-slate-950">사용자 정보</h2>
           <dl className="mt-5 space-y-4 text-sm">
-            <Info label="이메일" value={user.email} />
+            {user.developerId ? <Info label="개발자 ID" value={user.developerId} /> : <Info label="이메일" value={user.email} />}
             <Info label="학교" value={user.schoolName || "미등록"} />
             <Info label="나이" value={user.age ? `${user.age}세` : "미등록"} />
             <Info label="권한" value={roleLabel(user.role)} />
