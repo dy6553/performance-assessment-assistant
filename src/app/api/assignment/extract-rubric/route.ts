@@ -1,7 +1,7 @@
 import {
   extractPdfRubric,
   extractRubricImages,
-  type AssessmentDocumentType,
+  type AssessmentDocumentMode,
   type PdfRubricResult,
 } from "@/features/assessment/server/pdf-rubric";
 import { publicApiError } from "@/lib/http/server-error";
@@ -16,9 +16,7 @@ const JPEG_DATA_URL_PREFIX = "data:image/jpeg;base64,";
 
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
-  if (contentType.includes("application/json")) {
-    return handleCompressedPages(request);
-  }
+  if (contentType.includes("application/json")) return handleCompressedPages(request);
   return handleDirectPdf(request);
 }
 
@@ -31,19 +29,14 @@ async function handleCompressedPages(request: Request) {
   }
 
   const documentType = parseDocumentType(payload.documentType);
-  if (!documentType) {
-    return Response.json({ error: "파일 종류를 다시 선택해 주세요." }, { status: 400 });
-  }
+  if (!documentType) return Response.json({ error: "PDF 문서 종류를 확인하지 못했습니다." }, { status: 400 });
 
   if (!Array.isArray(payload.pageImages) || payload.pageImages.length < 1 || payload.pageImages.length > MAX_PAGES) {
     return Response.json({ error: `PDF는 ${MAX_PAGES}페이지 이하로 올려 주세요.` }, { status: 400 });
   }
 
   const pageImages = payload.pageImages.filter((value): value is string => typeof value === "string");
-  if (
-    pageImages.length !== payload.pageImages.length ||
-    pageImages.some((image) => !image.startsWith(JPEG_DATA_URL_PREFIX))
-  ) {
+  if (pageImages.length !== payload.pageImages.length || pageImages.some((image) => !image.startsWith(JPEG_DATA_URL_PREFIX))) {
     return Response.json({ error: "압축된 PDF 페이지 형식이 올바르지 않습니다." }, { status: 415 });
   }
 
@@ -54,7 +47,7 @@ async function handleCompressedPages(request: Request) {
 
   try {
     const result = await extractRubricImages(pageImages, documentType);
-    return documentResponse(result, sanitizeFileName(payload.fileName), documentType);
+    return documentResponse(result, sanitizeFileName(payload.fileName));
   } catch (error) {
     return Response.json({ error: publicApiError(error, "PDF를 판독하지 못했습니다.") }, { status: 502 });
   }
@@ -69,14 +62,10 @@ async function handleDirectPdf(request: Request) {
   }
 
   const documentType = parseDocumentType(formData.get("documentType"));
-  if (!documentType) {
-    return Response.json({ error: "파일 종류를 다시 선택해 주세요." }, { status: 400 });
-  }
+  if (!documentType) return Response.json({ error: "PDF 문서 종류를 확인하지 못했습니다." }, { status: 400 });
 
   const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return Response.json({ error: "PDF를 선택해 주세요." }, { status: 400 });
-  }
+  if (!(file instanceof File)) return Response.json({ error: "PDF를 선택해 주세요." }, { status: 400 });
   if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
     return Response.json({ error: "PDF 파일만 업로드할 수 있습니다." }, { status: 415 });
   }
@@ -91,19 +80,19 @@ async function handleDirectPdf(request: Request) {
 
   try {
     const result = await extractPdfRubric(bytes, documentType);
-    return documentResponse(result, sanitizeFileName(file.name), documentType);
+    return documentResponse(result, sanitizeFileName(file.name));
   } catch (error) {
     return Response.json({ error: publicApiError(error, "PDF를 판독하지 못했습니다.") }, { status: 502 });
   }
 }
 
-function documentResponse(result: PdfRubricResult, fileName: string, documentType: AssessmentDocumentType) {
+function documentResponse(result: PdfRubricResult, fileName: string) {
   return Response.json(
     {
       fileName,
-      documentType,
+      documentType: result.documentType,
       documentText: result.documentText,
-      rubricText: documentType === "rubric" ? result.documentText : undefined,
+      rubricText: result.documentType === "rubric" ? result.documentText : undefined,
       transcription: result.transcription,
       uncertainText: result.uncertainText,
       pages: result.pages,
@@ -113,9 +102,9 @@ function documentResponse(result: PdfRubricResult, fileName: string, documentTyp
   );
 }
 
-function parseDocumentType(value: unknown): AssessmentDocumentType | null {
-  if (value === undefined || value === null || value === "") return "rubric";
-  return value === "rubric" || value === "guide" ? value : null;
+function parseDocumentType(value: unknown): AssessmentDocumentMode | null {
+  if (value === undefined || value === null || value === "") return "auto";
+  return value === "auto" || value === "rubric" || value === "guide" ? value : null;
 }
 
 function sanitizeFileName(value: unknown) {
