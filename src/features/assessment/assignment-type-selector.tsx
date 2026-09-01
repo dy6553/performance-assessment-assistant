@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -41,7 +41,7 @@ export function AssignmentTypeSelector() {
     const assignmentType = secondary && secondary !== primary ? `${primary} + ${secondary}` : primary;
     const next = { ...assignment, assignmentType };
     localStorage.setItem(assessmentFlowStorageKey, JSON.stringify(next));
-    router.push(getSetupPath(primary));
+    router.push(`${getSetupPath(primary)}?keepType=1`);
   }
 
   async function recommend() {
@@ -202,7 +202,7 @@ export function AssignmentTypeSelector() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block text-sm font-black text-slate-700">{label}<div className="mt-1">{children}</div></label>;
 }
 
