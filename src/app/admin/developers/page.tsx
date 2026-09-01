@@ -26,6 +26,10 @@ function config() {
   return { baseUrl: baseUrl.replace(/\/$/, ""), secretKey };
 }
 
+function displayDeveloperId(rawId: string) {
+  return rawId.toLowerCase() === "gpt-admin" ? "i123" : rawId;
+}
+
 async function listDevelopers(): Promise<DeveloperUser[]> {
   const { baseUrl, secretKey } = config();
   const response = await fetch(`${baseUrl}/auth/v1/admin/users?page=1&per_page=1000`, {
@@ -76,7 +80,8 @@ export default async function AdminDevelopersPage() {
 
       <div className="mt-5 space-y-3">
         {visibleDevelopers.length ? visibleDevelopers.map((user) => {
-          const developerId = user.user_metadata?.developer_id ?? "알 수 없음";
+          const storedDeveloperId = user.user_metadata?.developer_id ?? "알 수 없음";
+          const developerId = displayDeveloperId(storedDeveloperId);
           const approved = user.user_metadata?.developer_approved === true;
           const isCurrentAdmin = user.id === admin.user.id;
           const isGptAdmin = developerId.toLowerCase() === "i123";
