@@ -16,17 +16,20 @@ export default async function AdminUsersPage({
   return (
     <>
       <PageHeader eyebrow="관리자" title="사용자 관리" description="이메일·닉네임·학교명·권한·계정 상태로 검색할 수 있습니다." />
-      <form className="mb-5 flex gap-2">
-        <label className="sr-only" htmlFor="user-search">사용자 검색</label>
-        <input
-          className="min-h-12 flex-1 rounded-2xl border border-slate-200 bg-white px-4 font-semibold text-slate-900 outline-none focus:border-violet-400"
-          defaultValue={query}
-          id="user-search"
-          name="q"
-          placeholder="이메일, 닉네임, 학교명"
-        />
-        <button className="min-h-12 rounded-2xl bg-violet-600 px-5 font-extrabold text-white" type="submit">검색</button>
-      </form>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <form className="flex min-w-0 flex-1 gap-2">
+          <label className="sr-only" htmlFor="user-search">사용자 검색</label>
+          <input
+            className="min-h-12 flex-1 rounded-2xl border border-slate-200 bg-white px-4 font-semibold text-slate-900 outline-none focus:border-violet-400"
+            defaultValue={query}
+            id="user-search"
+            name="q"
+            placeholder="이메일, 닉네임, 학교명"
+          />
+          <button className="min-h-12 rounded-2xl bg-violet-600 px-5 font-extrabold text-white" type="submit">검색</button>
+        </form>
+        <Link className="min-h-12 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-extrabold text-white" href="/admin/developers">개발자 테스트 계정</Link>
+      </div>
 
       <div className="space-y-3">
         {users.length ? users.map((user) => (
