@@ -16,6 +16,12 @@ import {
 import { PdfRubricUpload } from "./pdf-rubric-upload";
 import type { AssignmentInput } from "./schemas";
 
+const schoolGradeOptions: Array<{ schoolLevel: AssignmentInput["schoolLevel"]; grade: number; label: string }> = [
+  ...Array.from({ length: 6 }, (_, index) => ({ schoolLevel: "초등학교" as const, grade: index + 1, label: `초등학교 ${index + 1}학년` })),
+  ...Array.from({ length: 3 }, (_, index) => ({ schoolLevel: "중학교" as const, grade: index + 1, label: `중학교 ${index + 1}학년` })),
+  ...Array.from({ length: 3 }, (_, index) => ({ schoolLevel: "고등학교" as const, grade: index + 1, label: `고등학교 ${index + 1}학년` })),
+];
+
 export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: string; keepType?: boolean }) {
   const router = useRouter();
   const [assignment, setAssignment] = useState<AssignmentInput>(initialAssignment);
@@ -47,13 +53,12 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
     setError("");
   }
 
-  function updateSchoolLevel(level: AssignmentInput["schoolLevel"]) {
+  function updateSchoolGrade(value: string) {
+    const option = schoolGradeOptions.find((item) => `${item.schoolLevel}:${item.grade}` === value);
+    if (!option) return;
+
     setAssignment((current) => {
-      const next = {
-        ...current,
-        schoolLevel: level,
-        grade: Math.min(current.grade, level === "초등학교" ? 6 : 3),
-      };
+      const next = { ...current, schoolLevel: option.schoolLevel, grade: option.grade };
       writeStorage(assessmentFlowStorageKey, next);
       return next;
     });
@@ -87,7 +92,7 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
   }
 
   const typeMeta = getAssignmentTypeByValue(assignment.assignmentType);
-  const maxGrade = assignment.schoolLevel === "초등학교" ? 6 : 3;
+  const schoolGradeValue = `${assignment.schoolLevel}:${assignment.grade}`;
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-4 py-5 sm:px-6 sm:py-8">
@@ -119,16 +124,23 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
               </Field>
 
               <Field label="학교급 · 학년" required>
-                <div className="grid grid-cols-[1.35fr_1fr] gap-2">
-                  <select className={inputClass} value={assignment.schoolLevel} onChange={(event) => updateSchoolLevel(event.target.value as AssignmentInput["schoolLevel"])}>
-                    <option>초등학교</option>
-                    <option>중학교</option>
-                    <option>고등학교</option>
-                  </select>
-                  <select className={inputClass} value={assignment.grade} onChange={(event) => update("grade", Number(event.target.value))}>
-                    {Array.from({ length: maxGrade }, (_, index) => index + 1).map((grade) => <option key={grade} value={grade}>{grade}학년</option>)}
-                  </select>
-                </div>
+                <select className={inputClass} value={schoolGradeValue} onChange={(event) => updateSchoolGrade(event.target.value)}>
+                  <optgroup label="초등학교">
+                    {schoolGradeOptions.filter((item) => item.schoolLevel === "초등학교").map((item) => (
+                      <option key={`${item.schoolLevel}-${item.grade}`} value={`${item.schoolLevel}:${item.grade}`}>{item.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="중학교">
+                    {schoolGradeOptions.filter((item) => item.schoolLevel === "중학교").map((item) => (
+                      <option key={`${item.schoolLevel}-${item.grade}`} value={`${item.schoolLevel}:${item.grade}`}>{item.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="고등학교">
+                    {schoolGradeOptions.filter((item) => item.schoolLevel === "고등학교").map((item) => (
+                      <option key={`${item.schoolLevel}-${item.grade}`} value={`${item.schoolLevel}:${item.grade}`}>{item.label}</option>
+                    ))}
+                  </optgroup>
+                </select>
               </Field>
             </div>
           </div>
