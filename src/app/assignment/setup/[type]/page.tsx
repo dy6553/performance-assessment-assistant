@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { getAssignmentTypeBySlug } from "@/features/assessment/assessment-flow";
 import { AssignmentTypeSelector } from "@/features/assessment/assignment-type-selector";
-import { AssessmentWizard } from "@/features/assessment/assessment-wizard";
+import { CompactAssignmentSetup } from "@/features/assessment/compact-assignment-setup";
 
 export default async function AssignmentSetupPage({
   params,
@@ -19,5 +19,5 @@ export default async function AssignmentSetupPage({
     return <AssignmentTypeSelector />;
   }
 
-  return <AssessmentWizard screen="setup" typeSlug={keepType === "1" ? undefined : type} />;
+  return <CompactAssignmentSetup typeSlug={type} keepType={keepType === "1"} />;
 }
