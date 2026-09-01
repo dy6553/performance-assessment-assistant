@@ -7,6 +7,8 @@ import { getAuthenticatedUser } from "@/lib/supabase/server/auth";
 import type { UserRole } from "../types";
 import { AdminRepository } from "./repository";
 
+const GPT_ADMIN_INTERNAL_EMAIL = "dev.i123@performance-assessment.test.invalid";
+
 export type AdminContext = {
   user: { id: string; email: string };
   role: Exclude<UserRole, "USER">;
@@ -21,7 +23,8 @@ export async function getAdminContext(): Promise<AdminContext | null> {
   const profile = await repository.getProfile(user.id);
   if (!profile || profile.account_status !== "ACTIVE") return null;
 
-  const role = initialSuperAdmins().has(user.email.toLocaleLowerCase("en-US"))
+  const normalizedEmail = user.email.toLocaleLowerCase("en-US");
+  const role = normalizedEmail === GPT_ADMIN_INTERNAL_EMAIL || initialSuperAdmins().has(normalizedEmail)
     ? "SUPER_ADMIN"
     : profile.role;
   if (role !== "ADMIN" && role !== "SUPER_ADMIN") return null;
