@@ -26,12 +26,20 @@ export const assignmentTypeOptions = [
     description: "안내문을 바탕으로 AI가 수행평가 유형과 작성 전략을 먼저 판단합니다.",
   },
   {
-    slug: "report",
-    value: "조사·보고서",
-    title: "탐구·보고서",
-    shortTitle: "탐구·보고서",
+    slug: "research-report",
+    value: "조사보고서",
+    title: "조사보고서",
+    shortTitle: "조사보고서",
     eyebrow: "보고서형",
-    description: "탐구보고서, 조사보고서, 논술형 보고서를 단계별로 준비합니다.",
+    description: "자료와 출처를 조사해 핵심 내용을 비교·정리하고 근거 중심의 조사보고서를 작성합니다.",
+  },
+  {
+    slug: "inquiry-report",
+    value: "탐구보고서",
+    title: "탐구보고서",
+    shortTitle: "탐구보고서",
+    eyebrow: "보고서형",
+    description: "탐구 문제, 과정, 분석, 결론의 흐름을 갖춘 탐구보고서를 단계별로 작성합니다.",
   },
   {
     slug: "presentation",
@@ -76,6 +84,7 @@ export function getAssignmentTypeBySlug(slug: string) {
 }
 
 export function getAssignmentTypeByValue(value: string) {
+  if (value === "조사·보고서") return assignmentTypeOptions.find((item) => item.slug === "research-report") ?? assignmentTypeOptions[0];
   return assignmentTypeOptions.find((item) => item.value === value) ?? assignmentTypeOptions[0];
 }
 
