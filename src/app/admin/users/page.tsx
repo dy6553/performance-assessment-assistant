@@ -15,7 +15,7 @@ export default async function AdminUsersPage({
 
   return (
     <>
-      <PageHeader eyebrow="관리자" title="사용자 관리" description="이메일·닉네임·학교명·권한·계정 상태로 검색할 수 있습니다." />
+      <PageHeader eyebrow="관리자" title="사용자 관리" description="ID·이메일·닉네임·학교명·권한·계정 상태로 검색할 수 있습니다." />
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <form className="flex min-w-0 flex-1 gap-2">
           <label className="sr-only" htmlFor="user-search">사용자 검색</label>
@@ -24,7 +24,7 @@ export default async function AdminUsersPage({
             defaultValue={query}
             id="user-search"
             name="q"
-            placeholder="이메일, 닉네임, 학교명"
+            placeholder="ID, 이메일, 닉네임, 학교명"
           />
           <button className="min-h-12 rounded-2xl bg-violet-600 px-5 font-extrabold text-white" type="submit">검색</button>
         </form>
@@ -37,11 +37,13 @@ export default async function AdminUsersPage({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-black text-slate-950">{user.nickname ?? "이름 미설정"}</p>
+                  <p className="font-black text-slate-950">{user.developerId ? `ID ${user.developerId}` : user.nickname ?? "이름 미설정"}</p>
                   <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-black text-violet-700">{roleLabel(user.role)}</span>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-black ${statusClass(user.status)}`}>{statusLabel(user.status)}</span>
                 </div>
-                <p className="mt-1 break-all text-sm text-slate-600">{maskEmail(user.email)}</p>
+                <p className="mt-1 break-all text-sm text-slate-600">
+                  {user.developerId ? `개발자 ID: ${user.developerId}` : maskEmail(user.email)}
+                </p>
                 <p className="mt-2 text-xs leading-5 text-slate-400">
                   {user.schoolName || "학교 미설정"} · {user.age ? `${user.age}세` : "나이 미설정"} · 수행평가 {user.assignmentCount}개 · 오늘 AI {user.todayAiRuns}회
                 </p>
