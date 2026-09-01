@@ -28,8 +28,18 @@ const navigation: NavigationItem[] = [
     icon: "document",
     activePrefixes: ["/assignment/report", "/assignment/setup/research-report", "/assignment/setup/inquiry-report"],
   },
-  { href: "/assignment/setup/presentation", label: "발표", icon: "presentation" },
-  { href: "/assignment/setup/experiment", label: "탐구", icon: "flask" },
+  {
+    href: "/assignment/presentation",
+    label: "발표",
+    icon: "presentation",
+    activePrefixes: ["/assignment/presentation", "/assignment/setup/presentation", "/assignment/setup/visual-material"],
+  },
+  {
+    href: "/assignment/inquiry",
+    label: "탐구",
+    icon: "flask",
+    activePrefixes: ["/assignment/inquiry", "/assignment/setup/experiment", "/assignment/setup/real-life-inquiry"],
+  },
   { href: "/settings", label: "설정", icon: "settings" },
 ];
 
