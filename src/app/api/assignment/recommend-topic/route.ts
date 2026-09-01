@@ -1,5 +1,5 @@
 import { topicRecommendationRequestSchema } from "@/features/assessment/schemas";
-import { recommendTopics } from "@/features/assessment/server/service";
+import { recommendTopics } from "@/features/assessment/server/topic-service";
 import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
