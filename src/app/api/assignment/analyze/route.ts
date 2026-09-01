@@ -1,5 +1,5 @@
 import { analyzeRequestSchema } from "@/features/assessment/schemas";
-import { analyzeAssignment } from "@/features/assessment/server/service";
+import { analyzeAssignment } from "@/features/assessment/server/prompted-service";
 import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
