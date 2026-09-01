@@ -9,6 +9,8 @@ import type {
   UserRole,
 } from "../types";
 
+const GPT_ADMIN_INTERNAL_EMAIL = "dev.i123@performance-assessment.test.invalid";
+
 type ProfileRow = {
   user_id: string;
   nickname: string | null;
@@ -26,6 +28,11 @@ type AuthUserRow = {
   email?: string;
   created_at: string;
   last_sign_in_at?: string;
+  user_metadata?: {
+    account_type?: string;
+    developer_id?: string;
+    developer_approved?: boolean;
+  };
 };
 
 type AuthUsersResponse = { users: AuthUserRow[] };
@@ -108,13 +115,21 @@ export class AdminRepository {
     return profiles
       .map((profile) => {
         const auth = authById.get(profile.user_id);
+        const developerId =
+          auth?.user_metadata?.account_type === "developer_test" && typeof auth.user_metadata.developer_id === "string"
+            ? auth.user_metadata.developer_id
+            : null;
+        const normalizedEmail = auth?.email?.toLocaleLowerCase("en-US") ?? "";
+        const role: UserRole = normalizedEmail === GPT_ADMIN_INTERNAL_EMAIL ? "SUPER_ADMIN" : profile.role;
+
         return {
           id: profile.user_id,
           email: auth?.email ?? "이메일 확인 불가",
+          developerId,
           nickname: profile.nickname,
           schoolName: profile.school_name,
           age: profile.age,
-          role: profile.role,
+          role,
           status: profile.account_status,
           createdAt: profile.created_at,
           updatedAt: profile.updated_at,
@@ -126,7 +141,7 @@ export class AdminRepository {
       .filter((user) =>
         !term
           ? true
-          : [user.email, user.nickname, user.schoolName, user.role, user.status]
+          : [user.email, user.developerId, user.nickname, user.schoolName, user.role, user.status]
               .filter(Boolean)
               .some((value) => String(value).toLocaleLowerCase("ko-KR").includes(term)),
       );
