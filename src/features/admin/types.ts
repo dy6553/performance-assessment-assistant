@@ -4,6 +4,7 @@ export type AccountStatus = "ACTIVE" | "LIMITED" | "SUSPENDED";
 export type AdminUserSummary = {
   id: string;
   email: string;
+  developerId: string | null;
   nickname: string | null;
   schoolName: string | null;
   age: number | null;
