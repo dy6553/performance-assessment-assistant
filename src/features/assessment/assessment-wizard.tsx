@@ -141,8 +141,8 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
       setError("과목 및 단원을 입력해 주세요.");
       return;
     }
-    if (assignment.teacherInstruction.trim().length < 2) {
-      setError("교사가 제시한 과제 설명을 입력해 주세요.");
+    if (assignment.teacherInstruction.trim().length < 2 && assignment.rubricText.trim().length < 2) {
+      setError("과제 안내서·평가기준표 PDF를 올리거나 교사 과제 설명을 입력해 주세요.");
       return;
     }
     writeStorage(assessmentFlowStorageKey, assignment);
@@ -200,8 +200,9 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
   }
 
   async function startAnalysis() {
-    if (assignment.topic.trim().length < 2 || assignment.teacherInstruction.trim().length < 2) {
-      setError("주제와 교사 안내문을 다시 확인해 주세요.");
+    const hasAssignmentGuidance = assignment.teacherInstruction.trim().length >= 2 || assignment.rubricText.trim().length >= 2;
+    if (assignment.topic.trim().length < 2 || !hasAssignmentGuidance) {
+      setError("주제와 과제 안내 정보(PDF 또는 추가 설명)를 다시 확인해 주세요.");
       return;
     }
 
@@ -733,10 +734,12 @@ function ReviewScreen({
         ))}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-xs font-black text-slate-400">교사 과제 설명</p>
-        <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">{assignment.teacherInstruction}</p>
-      </div>
+      {assignment.teacherInstruction ? (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-xs font-black text-slate-400">교사 과제 설명</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">{assignment.teacherInstruction}</p>
+        </div>
+      ) : null}
 
       {assignment.requiredElements ? <SummaryBlock label="필수 포함 요소" value={assignment.requiredElements} /> : null}
       {assignment.studentIdeas ? <SummaryBlock label="내 생각 / 조사·탐구 방향" value={assignment.studentIdeas} /> : null}
