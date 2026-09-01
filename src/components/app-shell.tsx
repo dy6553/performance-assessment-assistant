@@ -22,7 +22,12 @@ const navigation: NavigationItem[] = [
     icon: "sparkles",
     activePrefixes: ["/ai-tools", "/topic-recommender", "/assignment/setup/auto", "/grader"],
   },
-  { href: "/assignment/setup/report", label: "보고서", icon: "document" },
+  {
+    href: "/assignment/report",
+    label: "보고서",
+    icon: "document",
+    activePrefixes: ["/assignment/report", "/assignment/setup/research-report", "/assignment/setup/inquiry-report"],
+  },
   { href: "/assignment/setup/presentation", label: "발표", icon: "presentation" },
   { href: "/assignment/setup/experiment", label: "탐구", icon: "flask" },
   { href: "/settings", label: "설정", icon: "settings" },
