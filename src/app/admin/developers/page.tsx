@@ -59,7 +59,7 @@ export default async function AdminDevelopersPage() {
           </label>
           <label className="block">
             <span className="mb-2 block text-sm font-black text-slate-700">테스트 비밀번호</span>
-            <input className="min-h-12 w-full rounded-2xl border border-slate-200 px-4" minLength={12} name="password" placeholder="12자 이상" required type="password" />
+            <input className="min-h-12 w-full rounded-2xl border border-slate-200 px-4" minLength={8} name="password" placeholder="8자 이상" required type="password" />
           </label>
           <button className="min-h-12 rounded-2xl bg-violet-600 px-5 font-extrabold text-white" type="submit">승인 대기로 생성</button>
         </form>
