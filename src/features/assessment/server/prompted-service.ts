@@ -12,7 +12,7 @@ import {
 } from "../schemas";
 import { generateStructured } from "@/lib/ai/nvidia";
 import { routeModel, type ModelRoute } from "@/lib/ai/router";
-import { composePostTopicPrompt } from "./post-topic-prompts";
+import { composePostTopicPrompt, composeVerificationPrompt } from "./post-topic-prompts";
 import {
   composeAssessmentPrompts,
   getAssessmentTypePrompt,
@@ -77,6 +77,22 @@ function postTopicPrompt(assignment: AssignmentInput) {
     "이 프롬프트 묶음은 주제 선정 단계에는 사용하지 않습니다.",
     "주제가 확정된 뒤 초안을 작성하는 순간부터 적용하며, 이후 초안 검증·수정 단계에도 계속 적용합니다.",
     `확정된 수행평가 유형: ${primary}`,
+    "공통 입력 정보는 아래 사용자 메시지의 commonContext를 사용하고, 확정된 주제는 topic을 그대로 유지하세요.",
+  ].join("\n");
+}
+
+function verificationStagePrompt(assignment: AssignmentInput) {
+  const { primary } = promptTypes(assignment);
+  return [
+    composeVerificationPrompt(primary),
+    "",
+    "[검토 및 논리 검증 단계 전용 규칙]",
+    "이 검토 프롬프트는 초안 작성 단계에는 사용하지 않고, 완성된 초안을 검토·논리검증·수정하는 단계에서만 추가 적용합니다.",
+    `확정된 수행평가 유형: ${primary}`,
+    "교사 안내문·평가기준 위반과 치명적 논리 오류를 문체 문제보다 먼저 찾으세요.",
+    "주장–근거–해석, 숨은 전제, 반례·대안 설명, 사실·수치·출처, 실제 수행 여부, 학생 설명 가능성을 모두 내부적으로 점검하세요.",
+    "비판적인 교사 관점의 Red Team 검증을 수행하고, 문제는 치명적→높음→중간→낮음 순으로 우선 처리하세요.",
+    "수정이 필요하면 기존 학생의 실제 내용과 데이터는 보존하고 최소한의 수정만 하며, 수정 후 동일 기준으로 다시 검증하세요.",
     "공통 입력 정보는 아래 사용자 메시지의 commonContext를 사용하고, 확정된 주제는 topic을 그대로 유지하세요.",
   ].join("\n");
 }
@@ -156,7 +172,7 @@ export async function verifyDraft(assignment: AssignmentInput, analysis: Analysi
     maxTokens: 10000,
     temperature: 0.05,
     messages: [
-      { role: "system", content: `${postTopicPrompt(assignment)}\n\n선택된 유형의 최종 검증 기준을 적용하되, 외부 확인이 필요한 사실은 NEEDS_WEB_VERIFICATION으로 표시하세요. 확정된 주제와 실제 수행 사실을 유지하고, 수정본이 필요해도 존재하지 않는 활동·자료·결과를 추가하지 마세요. JSON 객체만 출력하세요.\n\n출력 계약:${JSON.stringify(contract)}` },
+      { role: "system", content: `${verificationStagePrompt(assignment)}\n\n최종 검토 결과를 호출부 JSON 계약에 맞게 구조화하세요. 외부 확인이 필요한 사실은 NEEDS_WEB_VERIFICATION으로 표시하세요. 확정된 주제와 실제 수행 사실을 유지하고, 수정본이 필요해도 존재하지 않는 활동·자료·결과를 추가하지 마세요. JSON 객체만 출력하세요.\n\n출력 계약:${JSON.stringify(contract)}` },
       { role: "user", content: JSON.stringify({ commonContext: commonContext(assignment), topic: assignment.topic, analysis, draft }) },
     ],
   });
