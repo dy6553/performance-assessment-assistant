@@ -35,7 +35,10 @@ export default async function LoginPage({
 
       <AuthForm nextPath={next ?? "/account"} />
 
-      <p className="mt-6 text-center text-xs font-semibold leading-5 text-slate-500">
+      <div className="mt-6 text-center">
+        <Link className="text-sm font-extrabold text-violet-700 hover:text-violet-900" href="/developer-login">GPT 테스트용 개발자 ID로 로그인</Link>
+      </div>
+      <p className="mt-3 text-center text-xs font-semibold leading-5 text-slate-500">
         회원가입 시 Supabase 설정에 따라 이메일 확인이 필요할 수 있습니다.
       </p>
     </main>
