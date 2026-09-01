@@ -31,5 +31,5 @@ export async function developerLoginAction(
     return { message: "개발자 테스트 계정이 아닙니다." };
   }
 
-  redirect("/");
+  redirect(developerId.toLowerCase() === "gpt-admin" ? "/admin" : "/");
 }
