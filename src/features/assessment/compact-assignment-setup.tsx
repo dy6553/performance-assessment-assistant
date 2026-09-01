@@ -167,7 +167,11 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
             과제 문서 <span className="text-violet-700" aria-label="필수">*</span>
           </div>
           <p className="mb-3 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내서 PDF가 있으면 올려 주세요. PDF가 없다면 아래 추가 설명에 교사 안내 내용을 입력하면 됩니다.</p>
-          <PdfRubricUpload disabled={false} onExtracted={(text) => update("rubricText", text)} />
+          <PdfRubricUpload
+            disabled={false}
+            onExtracted={(text) => update("rubricText", text)}
+            onGuideExtracted={(text) => update("teacherInstruction", text)}
+          />
         </div>
 
         {assignment.rubricText ? (
