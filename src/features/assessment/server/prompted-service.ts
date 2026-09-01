@@ -12,7 +12,12 @@ import {
 } from "../schemas";
 import { generateStructured } from "@/lib/ai/nvidia";
 import { routeModel, type ModelRoute } from "@/lib/ai/router";
-import { composeAssessmentPrompts, getAssessmentTypePrompt } from "./type-prompts";
+import { composePostTopicPrompt } from "./post-topic-prompts";
+import {
+  composeAssessmentPrompts,
+  getAssessmentTypePrompt,
+  type AssessmentPromptType,
+} from "./type-prompts";
 
 type RunResult<T> = { data: T; route: ModelRoute };
 
@@ -26,7 +31,10 @@ function promptTypes(assignment: AssignmentInput) {
     "실생활 적용 탐구": "실생활적용탐구",
   };
   const normalized = parts.map((v) => aliases[v] ?? v).filter((v) => getAssessmentTypePrompt(v));
-  return { primary: normalized[0] ?? "탐구보고서", secondary: normalized[1] };
+  return {
+    primary: (normalized[0] ?? "탐구보고서") as AssessmentPromptType,
+    secondary: normalized[1] as AssessmentPromptType | undefined,
+  };
 }
 
 function commonContext(assignment: AssignmentInput) {
@@ -57,6 +65,19 @@ function selectedPrompt(assignment: AssignmentInput) {
     "주 유형 하나만 선택된 경우 다른 유형의 지침을 추론하거나 섞지 마세요.",
     "복합 유형인 경우 위 두 유형의 지침만 사용하며, 서로 중복되는 지침은 한 번만 적용하세요.",
     "공통 입력 정보는 아래 사용자 메시지의 commonContext를 사용하세요.",
+  ].join("\n");
+}
+
+function postTopicPrompt(assignment: AssignmentInput) {
+  const { primary } = promptTypes(assignment);
+  return [
+    composePostTopicPrompt(primary),
+    "",
+    "[적용 시점 규칙]",
+    "이 프롬프트 묶음은 주제 선정 단계에는 사용하지 않습니다.",
+    "주제가 확정된 뒤 초안을 작성하는 순간부터 적용하며, 이후 초안 검증·수정 단계에도 계속 적용합니다.",
+    `확정된 수행평가 유형: ${primary}`,
+    "공통 입력 정보는 아래 사용자 메시지의 commonContext를 사용하고, 확정된 주제는 topic을 그대로 유지하세요.",
   ].join("\n");
 }
 
@@ -112,7 +133,7 @@ export async function generateDraft(assignment: AssignmentInput, analysis: Analy
     schema: draftResultSchema,
     maxTokens: 12000,
     messages: [
-      { role: "system", content: `${selectedPrompt(assignment)}\n\n선택된 유형의 작성 절차와 구조를 실제 초안에 적용하세요. 실제로 하지 않은 활동·결과·통계는 만들지 마세요. JSON 객체만 출력하세요.\n\n출력 계약:${JSON.stringify(contract)}` },
+      { role: "system", content: `${postTopicPrompt(assignment)}\n\n선택된 유형의 작성 절차와 구조를 실제 초안에 적용하세요. 실제로 하지 않은 활동·결과·통계는 만들지 마세요. 이미 확정된 주제를 다른 주제로 바꾸거나 새 주제를 추천하지 마세요. JSON 객체만 출력하세요.\n\n출력 계약:${JSON.stringify(contract)}` },
       { role: "user", content: JSON.stringify({ commonContext: commonContext(assignment), topic: assignment.topic, analysis }) },
     ],
   });
@@ -135,8 +156,8 @@ export async function verifyDraft(assignment: AssignmentInput, analysis: Analysi
     maxTokens: 10000,
     temperature: 0.05,
     messages: [
-      { role: "system", content: `${selectedPrompt(assignment)}\n\n선택된 유형의 최종 검증 기준을 적용하되, 외부 확인이 필요한 사실은 NEEDS_WEB_VERIFICATION으로 표시하세요. JSON 객체만 출력하세요.\n\n출력 계약:${JSON.stringify(contract)}` },
-      { role: "user", content: JSON.stringify({ commonContext: commonContext(assignment), analysis, draft }) },
+      { role: "system", content: `${postTopicPrompt(assignment)}\n\n선택된 유형의 최종 검증 기준을 적용하되, 외부 확인이 필요한 사실은 NEEDS_WEB_VERIFICATION으로 표시하세요. 확정된 주제와 실제 수행 사실을 유지하고, 수정본이 필요해도 존재하지 않는 활동·자료·결과를 추가하지 마세요. JSON 객체만 출력하세요.\n\n출력 계약:${JSON.stringify(contract)}` },
+      { role: "user", content: JSON.stringify({ commonContext: commonContext(assignment), topic: assignment.topic, analysis, draft }) },
     ],
   });
   const statuses: VerificationStatus[] = [
