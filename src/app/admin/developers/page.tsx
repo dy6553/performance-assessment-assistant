@@ -5,6 +5,7 @@ import { requireAdmin } from "@/features/admin/server/auth";
 import {
   approveDeveloperAccountAction,
   createDeveloperAccountAction,
+  resetDeveloperPasswordAction,
   revokeDeveloperAccountAction,
 } from "./actions";
 import { DeveloperRemoveButton } from "./developer-remove-button";
@@ -78,12 +79,14 @@ export default async function AdminDevelopersPage() {
           const developerId = user.user_metadata?.developer_id ?? "알 수 없음";
           const approved = user.user_metadata?.developer_approved === true;
           const isCurrentAdmin = user.id === admin.user.id;
+          const isGptAdmin = developerId.toLowerCase() === "i123";
           return (
             <Card key={user.id}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-black text-slate-950">{developerId}</p>
                   <p className={`mt-1 text-sm font-extrabold ${approved ? "text-emerald-700" : "text-amber-700"}`}>{approved ? "승인됨 · 로그인 가능" : "승인 대기 · 로그인 차단"}</p>
+                  {isGptAdmin ? <p className="mt-1 text-xs font-black text-violet-700">GPT 최고 관리자 계정</p> : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <form action={approved ? revokeDeveloperAccountAction : approveDeveloperAccountAction}>
@@ -96,6 +99,24 @@ export default async function AdminDevelopersPage() {
                   {!isCurrentAdmin ? <DeveloperRemoveButton developerId={developerId} userId={user.id} /> : null}
                 </div>
               </div>
+
+              <form action={resetDeveloperPasswordAction} className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
+                <input name="userId" type="hidden" value={user.id} />
+                <input name="developerId" type="hidden" value={developerId} />
+                <label className="min-w-0 flex-1">
+                  <span className="sr-only">{developerId} 새 비밀번호</span>
+                  <input
+                    autoComplete="new-password"
+                    className="min-h-11 w-full rounded-xl border border-slate-200 px-4 text-sm"
+                    minLength={8}
+                    name="password"
+                    placeholder="새 비밀번호 8자 이상"
+                    required
+                    type="password"
+                  />
+                </label>
+                <button className="min-h-11 rounded-xl bg-slate-900 px-4 text-sm font-extrabold text-white" type="submit">비밀번호 변경</button>
+              </form>
             </Card>
           );
         }) : <Card><p className="text-slate-500">개발자 테스트 계정이 없습니다.</p></Card>}
