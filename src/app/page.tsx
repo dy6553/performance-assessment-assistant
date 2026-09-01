@@ -30,10 +30,10 @@ const sections = [
     accent: "emerald",
     items: [
       {
-        href: "/assignment/setup/report",
-        title: "탐구·보고서",
-        description: "탐구보고서, 조사보고서, 논술형 보고서를 단계별로 준비합니다.",
-        badge: "보고서형",
+        href: "/assignment/report",
+        title: "보고서",
+        description: "조사보고서와 탐구보고서 중 과제에 맞는 유형을 선택해서 시작합니다.",
+        badge: "2가지 유형",
       },
       {
         href: "/assignment/setup/presentation",
