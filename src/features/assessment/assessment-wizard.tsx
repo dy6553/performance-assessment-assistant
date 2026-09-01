@@ -138,7 +138,7 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
 
   function goToTopic() {
     if (!assignment.subject.trim()) {
-      setError("과목을 입력해 주세요.");
+      setError("과목 및 단원을 입력해 주세요.");
       return;
     }
     if (assignment.teacherInstruction.trim().length < 2) {
@@ -160,7 +160,7 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
 
   async function recommendTopicIdeas() {
     if (!assignment.subject.trim()) {
-      setError("과목을 먼저 입력해 주세요.");
+      setError("과목 및 단원을 먼저 입력해 주세요.");
       return;
     }
 
@@ -427,8 +427,8 @@ function SetupScreen({
             ))}
           </select>
         </Field>
-        <Field label="과목">
-          <input className={inputClass} value={assignment.subject} onChange={(event) => onUpdate("subject", event.target.value)} placeholder="예: 통합사회1" />
+        <Field label="과목 및 단원">
+          <input className={inputClass} value={assignment.subject} onChange={(event) => onUpdate("subject", event.target.value)} placeholder="예: 통합사회1 / 인간, 사회, 환경과 행복" />
         </Field>
       </div>
 
@@ -711,7 +711,7 @@ function ReviewScreen({
     ["수행평가 유형", typeMeta.title],
     ["교육과정", assignment.curriculum],
     ["학교·학년", `${assignment.schoolLevel} ${assignment.grade}학년`],
-    ["과목", assignment.subject],
+    ["과목 및 단원", assignment.subject],
     ["세부 범위", assignment.course || "입력하지 않음"],
     ["주제", assignment.topic],
     ["제출 형식", assignment.formatRule || "입력하지 않음"],
