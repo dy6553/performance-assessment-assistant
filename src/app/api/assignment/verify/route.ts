@@ -1,5 +1,5 @@
 import { verifyRequestSchema } from "@/features/assessment/schemas";
-import { verifyDraft } from "@/features/assessment/server/service";
+import { verifyDraft } from "@/features/assessment/server/prompted-service";
 import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
