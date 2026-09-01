@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/features/admin/server/auth";
 
 const DEVELOPER_ID_RE = /^[a-zA-Z0-9_-]{3,32}$/;
+const GPT_ADMIN_ID = "i123";
+const GPT_ADMIN_LEGACY_ID = "gpt-admin";
+const GPT_ADMIN_INTERNAL_EMAIL = "dev.gpt-admin@performance-assessment.test.invalid";
 
 function config() {
   const baseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.supabase_URL)?.trim();
@@ -14,7 +17,15 @@ function config() {
 }
 
 function developerEmail(developerId: string) {
-  return `dev.${developerId.toLowerCase()}@performance-assessment.test.invalid`;
+  const normalized = developerId.toLowerCase();
+  if (normalized === GPT_ADMIN_ID) return GPT_ADMIN_INTERNAL_EMAIL;
+  return `dev.${normalized}@performance-assessment.test.invalid`;
+}
+
+function developerIdMatches(requestedId: string, storedId: unknown) {
+  if (typeof storedId !== "string") return false;
+  if (storedId === requestedId) return true;
+  return requestedId.toLowerCase() === GPT_ADMIN_ID && storedId.toLowerCase() === GPT_ADMIN_LEGACY_ID;
 }
 
 async function adminRequest(path: string, init: RequestInit = {}) {
@@ -141,7 +152,7 @@ export async function resetDeveloperPasswordAction(formData: FormData) {
   if (
     target.id !== userId ||
     target.user_metadata?.account_type !== "developer_test" ||
-    target.user_metadata?.developer_id !== developerId
+    !developerIdMatches(developerId, target.user_metadata?.developer_id)
   ) {
     throw new Error("DEVELOPER_ACCOUNT_MISMATCH");
   }
