@@ -131,6 +131,10 @@ async function setSessionCookies(session: AuthSession) {
   await setSessionTokenCookies(session.access_token, session.refresh_token, session.expires_in);
 }
 
+function isUnapprovedDeveloper(user: AuthUser) {
+  return user.user_metadata?.account_type === "developer_test" && user.user_metadata?.developer_approved !== true;
+}
+
 export async function signInWithPassword(email: string, password: string) {
   const response = await authRequest<AuthSession>("token?grant_type=password", {
     method: "POST",
@@ -138,6 +142,7 @@ export async function signInWithPassword(email: string, password: string) {
   });
 
   if (!response.data) return { ok: false as const, status: response.status };
+  if (isUnapprovedDeveloper(response.data.user)) return { ok: false as const, status: 403 };
   if ((await readAccountStatus(response.data.access_token)) === "SUSPENDED") {
     return { ok: false as const, status: 403 };
   }
@@ -177,7 +182,7 @@ export async function establishSessionFromConfirmation(
 
   try {
     const response = await authRequest<AuthUser>("user", { accessToken });
-    if (!response.data) return false;
+    if (!response.data || isUnapprovedDeveloper(response.data)) return false;
     if ((await readAccountStatus(accessToken)) === "SUSPENDED") return false;
     await setSessionTokenCookies(accessToken, refreshToken, expiresIn);
     return true;
@@ -192,9 +197,8 @@ async function readAuthenticatedUser(): Promise<AuthUser | null> {
   if (!accessToken) return null;
 
   try {
-    // 계정 정지 여부는 모든 보호 경로에서 proxy가 먼저 검사한다.
-    // 여기서는 Supabase Auth의 사용자 검증만 수행해 같은 요청의 프로필 상태 중복 조회를 없앤다.
     const response = await authRequest<AuthUser>("user", { accessToken });
+    if (response.data && isUnapprovedDeveloper(response.data)) return null;
     return response.data ?? null;
   } catch {
     return null;
