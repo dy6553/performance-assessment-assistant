@@ -126,3 +126,37 @@ export async function revokeDeveloperAccountAction(formData: FormData) {
   revalidatePath("/admin/developers");
   revalidatePath("/admin/users");
 }
+
+export async function resetDeveloperPasswordAction(formData: FormData) {
+  const admin = await requireAdmin("SUPER_ADMIN");
+  const userId = String(formData.get("userId") ?? "");
+  const developerId = String(formData.get("developerId") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  if (!userId || !DEVELOPER_ID_RE.test(developerId) || password.length < 8) return;
+
+  const target = await adminRequest(`/auth/v1/admin/users/${encodeURIComponent(userId)}`) as {
+    id?: string;
+    user_metadata?: { account_type?: string; developer_id?: string };
+  };
+  if (
+    target.id !== userId ||
+    target.user_metadata?.account_type !== "developer_test" ||
+    target.user_metadata?.developer_id !== developerId
+  ) {
+    throw new Error("DEVELOPER_ACCOUNT_MISMATCH");
+  }
+
+  await adminRequest(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ password }),
+  });
+  await admin.repository.addAuditLog({
+    admin_user_id: admin.user.id,
+    action: "개발자 테스트 계정 비밀번호 변경",
+    target_type: "USER",
+    target_id: userId,
+    reason: null,
+    metadata: { developerId },
+  });
+  revalidatePath("/admin/developers");
+}
