@@ -35,27 +35,14 @@ export default async function LoginPage({
 
       <AuthForm nextPath={next ?? "/account"} />
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <form action="/admin-register" method="get">
-          <button
-            className="min-h-12 w-full rounded-2xl border border-violet-200 bg-white px-6 font-extrabold text-violet-700 shadow-sm transition hover:bg-violet-50 active:scale-[0.98]"
-            type="submit"
-          >
-            관리자 계정 만들기
-          </button>
-        </form>
-        <form action="/developer-login" method="get">
-          <button
-            className="min-h-12 w-full rounded-2xl bg-violet-600 px-6 font-extrabold text-white shadow-sm transition hover:bg-violet-700 active:scale-[0.98]"
-            type="submit"
-          >
-            GPT 테스트용 개발자 계정
-          </button>
-        </form>
-      </div>
-      <p className="mt-3 text-center text-xs font-semibold leading-5 text-slate-500">
-        관리자 계정은 서버에 등록된 최고 관리자 이메일만 만들 수 있습니다.
-      </p>
+      <form action="/developer-login" className="mt-6 text-center" method="get">
+        <button
+          className="min-h-12 rounded-2xl bg-violet-600 px-6 font-extrabold text-white shadow-sm transition hover:bg-violet-700 active:scale-[0.98]"
+          type="submit"
+        >
+          GPT 관리자 계정
+        </button>
+      </form>
     </main>
   );
 }
