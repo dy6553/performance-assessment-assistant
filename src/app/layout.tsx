@@ -7,6 +7,7 @@ import { AppShell } from "@/components/app-shell";
 import { PreferenceRuntime } from "@/components/preference-runtime";
 import { SchoolDataScopeGuard } from "@/components/school-data-scope-guard";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { getAdminContext } from "@/features/admin/server/auth";
 import { ACCESS_COOKIE, SCHOOL_SCOPE_COOKIE } from "@/lib/supabase/auth-cookies";
 import { getCurrentUserProfile } from "@/lib/supabase/server/profile";
 
@@ -44,11 +45,10 @@ const preferenceBootScript = `(()=>{try{const d=document.documentElement;const g
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const cookieStore = await cookies();
   const signedIn = Boolean(cookieStore.get(ACCESS_COOKIE)?.value);
+  const isAdmin = signedIn ? Boolean(await getAdminContext().catch(() => null)) : false;
   let dataScope = "signed-out";
 
   if (signedIn) {
-    // 보호된 경로에서는 proxy가 이미 계정 상태와 학교 범위를 한 번에 읽어 이 쿠키를 전달한다.
-    // 이전 버전 세션처럼 쿠키가 아직 없는 경우에만 한 번 프로필을 조회한다.
     const cachedScope = cookieStore.get(SCHOOL_SCOPE_COOKIE)?.value;
     if (cachedScope) {
       dataScope = cachedScope;
@@ -66,7 +66,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <PreferenceRuntime />
         <SchoolDataScopeGuard scope={dataScope} />
         <AiRequestProgress />
-        <AppShell signedIn={signedIn}>{children}</AppShell>
+        <AppShell isAdmin={isAdmin} signedIn={signedIn}>{children}</AppShell>
       </body>
     </html>
   );

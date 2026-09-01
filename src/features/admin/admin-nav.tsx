@@ -5,6 +5,8 @@ const links = [
   ["사용자", "/admin/users"],
   ["AI 모델", "/admin/ai-models"],
   ["AI·인프라", "/admin/services"],
+  ["Database", "/admin/database"],
+  ["데이터", "/admin/files"],
   ["감사 로그", "/admin/audit-logs"],
   ["설정", "/admin/settings"],
 ] as const;

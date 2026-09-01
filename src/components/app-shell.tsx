@@ -49,7 +49,15 @@ function isActive(pathname: string, item: NavigationItem) {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-export function AppShell({ children, signedIn }: { children: ReactNode; signedIn: boolean }) {
+export function AppShell({
+  children,
+  signedIn,
+  isAdmin = false,
+}: {
+  children: ReactNode;
+  signedIn: boolean;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
   const historyActive = pathname === "/history" || pathname.startsWith("/history/");
 
@@ -84,6 +92,14 @@ export function AppShell({ children, signedIn }: { children: ReactNode; signedIn
           </nav>
 
           <div className="ml-2 flex shrink-0 items-center gap-1.5 sm:gap-2">
+            {isAdmin ? (
+              <Link
+                className="inline-flex min-h-10 items-center rounded-full border border-violet-200 bg-gradient-to-r from-violet-100 to-sky-50 px-3 py-2 text-xs font-black text-violet-900 shadow-sm transition hover:border-violet-300 active:scale-[0.97]"
+                href="/admin"
+              >
+                관리자
+              </Link>
+            ) : null}
             <Link
               aria-current={historyActive ? "page" : undefined}
               aria-label="최근 작업 기록"
