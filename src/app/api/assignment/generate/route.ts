@@ -1,5 +1,5 @@
 import { generateRequestSchema } from "@/features/assessment/schemas";
-import { generateDraft } from "@/features/assessment/server/service";
+import { generateDraft } from "@/features/assessment/server/prompted-service";
 import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
