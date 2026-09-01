@@ -17,7 +17,7 @@ export async function developerLoginAction(
 ): Promise<DeveloperLoginState> {
   const developerId = String(formData.get("developerId") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!DEVELOPER_ID_RE.test(developerId) || password.length < 12) {
+  if (!DEVELOPER_ID_RE.test(developerId) || password.length < 8) {
     return { message: "개발자 ID 또는 비밀번호 형식을 확인해 주세요." };
   }
 
