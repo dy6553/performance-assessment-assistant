@@ -12,7 +12,7 @@ export const assignmentInputSchema = z
     course: z.string().trim().max(120).default(""),
     assignmentType: z.string().trim().max(120).default("자동 분석"),
     topic: z.string().trim().min(2).max(500),
-    teacherInstruction: z.string().trim().min(2).max(20_000),
+    teacherInstruction: z.string().trim().max(20_000).default(""),
     rubricText: z.string().trim().max(20_000).default(""),
     achievementStandardText: z.string().trim().max(8_000).default(""),
     requiredElements: z.string().trim().max(8_000).default(""),
@@ -27,6 +27,13 @@ export const assignmentInputSchema = z
         code: "custom",
         path: ["grade"],
         message: `${value.schoolLevel} 학년 범위를 확인해 주세요.`,
+      });
+    }
+    if (value.teacherInstruction.trim().length < 2 && value.rubricText.trim().length < 2) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["teacherInstruction"],
+        message: "과제 안내서·평가기준표 PDF를 올리거나 교사 과제 설명을 입력해 주세요.",
       });
     }
   });
