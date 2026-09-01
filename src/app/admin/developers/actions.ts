@@ -40,7 +40,7 @@ export async function createDeveloperAccountAction(formData: FormData) {
   const admin = await requireAdmin("SUPER_ADMIN");
   const developerId = String(formData.get("developerId") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!DEVELOPER_ID_RE.test(developerId) || password.length < 12) return;
+  if (!DEVELOPER_ID_RE.test(developerId) || password.length < 8) return;
 
   const user = await adminRequest("/auth/v1/admin/users", {
     method: "POST",
