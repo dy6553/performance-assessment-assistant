@@ -25,10 +25,12 @@ type RubricPayload = {
 export function PdfRubricUpload({
   disabled,
   onExtracted,
+  onGuideExtracted,
   documentTypes,
 }: {
   disabled: boolean;
   onExtracted: (text: string) => void;
+  onGuideExtracted?: (text: string) => void;
   documentTypes?: DocumentType[];
 }) {
   const documentMode: DocumentMode = documentTypes?.length === 1 ? documentTypes[0] : "auto";
@@ -57,7 +59,9 @@ export function PdfRubricUpload({
       }
 
       if (payload.documentType === "guide") {
-        if (!applyTeacherInstruction(documentText)) {
+        if (onGuideExtracted) {
+          onGuideExtracted(documentText);
+        } else if (!applyTeacherInstruction(documentText)) {
           throw new Error("안내문 내용을 과제 설명 칸에 반영하지 못했습니다. 다시 시도해 주세요.");
         }
       } else {
