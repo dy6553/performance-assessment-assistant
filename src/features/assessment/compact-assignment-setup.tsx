@@ -66,6 +66,14 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
       setError("과목을 입력해 주세요.");
       return;
     }
+    if (!assignment.course.trim()) {
+      setError("세부단원을 입력해 주세요.");
+      return;
+    }
+    if (!assignment.formatRule.trim()) {
+      setError("제출 형식을 입력해 주세요.");
+      return;
+    }
     if (assignment.teacherInstruction.trim().length < 2) {
       setError("교사가 제시한 과제 설명을 입력해 주세요.");
       return;
@@ -93,35 +101,55 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-600">과제 정보</p>
             <h1 className="mt-2 text-2xl font-black tracking-[-0.035em] text-slate-950 sm:text-3xl">{typeMeta.title} 정보 입력</h1>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">필수 정보만 먼저 입력하세요. 세부 조건은 필요할 때 펼치면 됩니다.</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+              <span className="font-black text-violet-700">*</span> 표시 항목은 필수입니다. 선택 항목은 필요한 경우에만 입력하세요.
+            </p>
           </div>
           <Link className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-600" href="/">유형 다시 선택</Link>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <Field label="교육과정">
-            <select className={inputClass} value={assignment.curriculum} onChange={(event) => update("curriculum", event.target.value as AssignmentInput["curriculum"])}>
-              <option value="2022 개정 교육과정">2022 개정 교육과정</option>
-              <option value="2015 개정 교육과정">2015 개정 교육과정</option>
-            </select>
-          </Field>
-          <Field label="학교급">
-            <select className={inputClass} value={assignment.schoolLevel} onChange={(event) => updateSchoolLevel(event.target.value as AssignmentInput["schoolLevel"])}>
-              <option>초등학교</option><option>중학교</option><option>고등학교</option>
-            </select>
-          </Field>
-          <Field label="학년">
-            <select className={inputClass} value={assignment.grade} onChange={(event) => update("grade", Number(event.target.value))}>
-              {Array.from({ length: maxGrade }, (_, index) => index + 1).map((grade) => <option key={grade} value={grade}>{grade}학년</option>)}
-            </select>
-          </Field>
-          <Field label="과목">
-            <input className={inputClass} value={assignment.subject} onChange={(event) => update("subject", event.target.value)} placeholder="예: 통합사회" />
-          </Field>
-        </div>
+        <div className="mt-6 space-y-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="교육과정" required>
+                <select className={inputClass} value={assignment.curriculum} onChange={(event) => update("curriculum", event.target.value as AssignmentInput["curriculum"])}>
+                  <option value="2022 개정 교육과정">2022 개정 교육과정</option>
+                  <option value="2015 개정 교육과정">2015 개정 교육과정</option>
+                </select>
+              </Field>
 
-        <div className="mt-5">
-          <Field label="교사가 제시한 과제 설명">
+              <Field label="학교급 · 학년" required>
+                <div className="grid grid-cols-[1.35fr_1fr] gap-2">
+                  <select className={inputClass} value={assignment.schoolLevel} onChange={(event) => updateSchoolLevel(event.target.value as AssignmentInput["schoolLevel"])}>
+                    <option>초등학교</option>
+                    <option>중학교</option>
+                    <option>고등학교</option>
+                  </select>
+                  <select className={inputClass} value={assignment.grade} onChange={(event) => update("grade", Number(event.target.value))}>
+                    {Array.from({ length: maxGrade }, (_, index) => index + 1).map((grade) => <option key={grade} value={grade}>{grade}학년</option>)}
+                  </select>
+                </div>
+              </Field>
+            </div>
+          </div>
+
+          <Field label="과목 및 세부단원" required>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input className={inputClass} value={assignment.subject} onChange={(event) => update("subject", event.target.value)} placeholder="과목 예: 통합사회1" />
+              <input className={inputClass} value={assignment.course} onChange={(event) => update("course", event.target.value)} placeholder="세부단원 예: 인간, 사회, 환경과 행복" />
+            </div>
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="제출 형식" required>
+              <input className={inputClass} value={assignment.formatRule} onChange={(event) => update("formatRule", event.target.value)} placeholder="예: 보고서 PDF, 발표 자료" />
+            </Field>
+            <Field label="분량 / 시간" optional>
+              <input className={inputClass} value={assignment.lengthRule} onChange={(event) => update("lengthRule", event.target.value)} placeholder="예: 1500자, A4 2쪽, 5분" />
+            </Field>
+          </div>
+
+          <Field label="교사가 제시한 과제 설명" required>
             <textarea
               className={`${inputClass} min-h-32 resize-y`}
               value={assignment.teacherInstruction}
@@ -132,6 +160,9 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
         </div>
 
         <div className="mt-5">
+          <div className="mb-2 flex items-center gap-2 text-sm font-black text-slate-700">
+            과제 문서 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-400">선택</span>
+          </div>
           <PdfRubricUpload disabled={false} onExtracted={(text) => update("rubricText", text)} />
         </div>
 
@@ -143,27 +174,16 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
         ) : null}
 
         <details className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-          <summary className="cursor-pointer text-sm font-black text-slate-800">세부 조건 추가 <span className="font-semibold text-slate-400">(선택)</span></summary>
+          <summary className="cursor-pointer text-sm font-black text-slate-800">추가 정보 <span className="ml-1 font-semibold text-slate-400">(선택)</span></summary>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="세부 과목 / 단원">
-              <input className={inputClass} value={assignment.course} onChange={(event) => update("course", event.target.value)} placeholder="예: 통합사회 3단원" />
+            <Field label="추가 요구사항" optional>
+              <textarea className={`${inputClass} min-h-24 resize-y`} value={assignment.requiredElements} onChange={(event) => update("requiredElements", event.target.value)} placeholder="추가로 반드시 포함하라고 한 내용이 있다면 입력하세요." />
             </Field>
-            <Field label="제출 형식">
-              <input className={inputClass} value={assignment.formatRule} onChange={(event) => update("formatRule", event.target.value)} placeholder="예: 보고서 PDF, 발표 자료" />
-            </Field>
-            <Field label="분량 / 시간 조건">
-              <input className={inputClass} value={assignment.lengthRule} onChange={(event) => update("lengthRule", event.target.value)} placeholder="예: 1500자, 5분" />
-            </Field>
-            <Field label="추가 요구사항">
-              <textarea className={`${inputClass} min-h-24 resize-y`} value={assignment.requiredElements} onChange={(event) => update("requiredElements", event.target.value)} placeholder="반드시 포함해야 하는 내용이 있다면 입력하세요." />
+            <Field label="성취기준" optional>
+              <textarea className={`${inputClass} min-h-24 resize-y`} value={assignment.achievementStandardText} onChange={(event) => update("achievementStandardText", event.target.value)} placeholder="교사가 제시한 성취기준이 있다면 입력하세요." />
             </Field>
             <div className="sm:col-span-2">
-              <Field label="성취기준">
-                <textarea className={`${inputClass} min-h-24 resize-y`} value={assignment.achievementStandardText} onChange={(event) => update("achievementStandardText", event.target.value)} placeholder="교사가 제시한 성취기준이 있다면 입력하세요." />
-              </Field>
-            </div>
-            <div className="sm:col-span-2">
-              <Field label="내가 이미 생각한 내용 / 준비한 자료">
+              <Field label="내가 이미 생각한 내용 / 준비한 자료" optional>
                 <textarea className={`${inputClass} min-h-24 resize-y`} value={assignment.studentIdeas} onChange={(event) => update("studentIdeas", event.target.value)} placeholder="이미 정한 방향이나 준비한 자료가 있다면 적어 주세요." />
               </Field>
             </div>
@@ -180,8 +200,27 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block text-sm font-black text-slate-700">{label}<div className="mt-2">{children}</div></label>;
+function Field({
+  label,
+  children,
+  required = false,
+  optional = false,
+}: {
+  label: string;
+  children: React.ReactNode;
+  required?: boolean;
+  optional?: boolean;
+}) {
+  return (
+    <label className="block text-sm font-black text-slate-700">
+      <span className="inline-flex items-center gap-1.5">
+        {label}
+        {required ? <span className="text-violet-700" aria-label="필수">*</span> : null}
+        {optional ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-400">선택</span> : null}
+      </span>
+      <div className="mt-2">{children}</div>
+    </label>
+  );
 }
 
 function normalizeAssignment(stored: Partial<AssignmentInput> | null): AssignmentInput {
