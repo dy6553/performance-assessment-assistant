@@ -7,6 +7,7 @@ import {
   createDeveloperAccountAction,
   revokeDeveloperAccountAction,
 } from "./actions";
+import { DeveloperRemoveButton } from "./developer-remove-button";
 
 type DeveloperUser = {
   id: string;
@@ -40,8 +41,14 @@ async function listDevelopers(): Promise<DeveloperUser[]> {
 }
 
 export default async function AdminDevelopersPage() {
-  await requireAdmin("SUPER_ADMIN");
+  const admin = await requireAdmin("SUPER_ADMIN");
   const developers = await listDevelopers();
+  const withProfiles = await Promise.all(
+    developers.map(async (user) => ({ user, profile: await admin.repository.getProfile(user.id) })),
+  );
+  const visibleDevelopers = withProfiles
+    .filter(({ profile }) => profile?.account_status !== "SUSPENDED")
+    .map(({ user }) => user);
 
   return (
     <>
@@ -67,9 +74,10 @@ export default async function AdminDevelopersPage() {
       </Card>
 
       <div className="mt-5 space-y-3">
-        {developers.length ? developers.map((user) => {
+        {visibleDevelopers.length ? visibleDevelopers.map((user) => {
           const developerId = user.user_metadata?.developer_id ?? "알 수 없음";
           const approved = user.user_metadata?.developer_approved === true;
+          const isCurrentAdmin = user.id === admin.user.id;
           return (
             <Card key={user.id}>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -77,13 +85,16 @@ export default async function AdminDevelopersPage() {
                   <p className="font-black text-slate-950">{developerId}</p>
                   <p className={`mt-1 text-sm font-extrabold ${approved ? "text-emerald-700" : "text-amber-700"}`}>{approved ? "승인됨 · 로그인 가능" : "승인 대기 · 로그인 차단"}</p>
                 </div>
-                <form action={approved ? revokeDeveloperAccountAction : approveDeveloperAccountAction}>
-                  <input name="userId" type="hidden" value={user.id} />
-                  <input name="developerId" type="hidden" value={developerId} />
-                  <button className={`min-h-11 rounded-xl px-4 text-sm font-extrabold ${approved ? "bg-amber-50 text-amber-800" : "bg-emerald-600 text-white"}`} type="submit">
-                    {approved ? "승인 해제" : "승인"}
-                  </button>
-                </form>
+                <div className="flex flex-wrap items-center gap-2">
+                  <form action={approved ? revokeDeveloperAccountAction : approveDeveloperAccountAction}>
+                    <input name="userId" type="hidden" value={user.id} />
+                    <input name="developerId" type="hidden" value={developerId} />
+                    <button className={`min-h-11 rounded-xl px-4 text-sm font-extrabold ${approved ? "bg-amber-50 text-amber-800" : "bg-emerald-600 text-white"}`} type="submit">
+                      {approved ? "승인 해제" : "승인"}
+                    </button>
+                  </form>
+                  {!isCurrentAdmin ? <DeveloperRemoveButton developerId={developerId} userId={user.id} /> : null}
+                </div>
               </div>
             </Card>
           );
