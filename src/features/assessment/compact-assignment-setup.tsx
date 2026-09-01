@@ -79,8 +79,8 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
       setError("제출 형식을 입력해 주세요.");
       return;
     }
-    if (assignment.teacherInstruction.trim().length < 2) {
-      setError("교사가 제시한 과제 설명을 입력해 주세요.");
+    if (assignment.teacherInstruction.trim().length < 2 && assignment.rubricText.trim().length < 2) {
+      setError("과제 안내서·평가기준표 PDF를 올리거나 추가 설명에 교사 과제 설명을 입력해 주세요.");
       return;
     }
     writeStorage(assessmentFlowStorageKey, assignment);
@@ -160,21 +160,13 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
               <input className={inputClass} value={assignment.lengthRule} onChange={(event) => update("lengthRule", event.target.value)} placeholder="예: 1500자, A4 2쪽, 5분" />
             </Field>
           </div>
-
-          <Field label="교사가 제시한 과제 설명" required>
-            <textarea
-              className={`${inputClass} min-h-32 resize-y`}
-              value={assignment.teacherInstruction}
-              onChange={(event) => update("teacherInstruction", event.target.value)}
-              placeholder="수행평가 안내문, 선생님이 말한 조건, 제출 방법 등을 가능한 한 그대로 입력하세요."
-            />
-          </Field>
         </div>
 
         <div className="mt-5">
           <div className="mb-2 flex items-center gap-2 text-sm font-black text-slate-700">
-            과제 문서 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-400">선택</span>
+            과제 문서 <span className="text-violet-700" aria-label="필수">*</span>
           </div>
+          <p className="mb-3 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내서 PDF가 있으면 올려 주세요. PDF가 없다면 아래 추가 설명에 교사 안내 내용을 입력하면 됩니다.</p>
           <PdfRubricUpload disabled={false} onExtracted={(text) => update("rubricText", text)} />
         </div>
 
@@ -186,8 +178,18 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
         ) : null}
 
         <details className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-          <summary className="cursor-pointer text-sm font-black text-slate-800">추가 정보 <span className="ml-1 font-semibold text-slate-400">(선택)</span></summary>
+          <summary className="cursor-pointer text-sm font-black text-slate-800">추가 설명 및 정보 <span className="ml-1 font-semibold text-slate-400">(선택)</span></summary>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field label="교사가 제시한 과제 설명" optional>
+                <textarea
+                  className={`${inputClass} min-h-28 resize-y`}
+                  value={assignment.teacherInstruction}
+                  onChange={(event) => update("teacherInstruction", event.target.value)}
+                  placeholder="PDF에 없는 선생님 설명, 제출 방법, 주의사항 등이 있다면 입력하세요. PDF가 없다면 과제 안내 내용을 여기에 입력하세요."
+                />
+              </Field>
+            </div>
             <Field label="추가 요구사항" optional>
               <textarea className={`${inputClass} min-h-24 resize-y`} value={assignment.requiredElements} onChange={(event) => update("requiredElements", event.target.value)} placeholder="추가로 반드시 포함하라고 한 내용이 있다면 입력하세요." />
             </Field>
