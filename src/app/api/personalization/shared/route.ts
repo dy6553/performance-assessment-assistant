@@ -11,6 +11,14 @@ const CANONICAL_PERSONALIZATION_URL =
   "https://siheomon-study-app-six.vercel.app/api/personalization/shared";
 
 export async function GET() {
+  return proxy("GET");
+}
+
+export async function DELETE() {
+  return proxy("DELETE");
+}
+
+async function proxy(method: "GET" | "DELETE") {
   const user = await getAuthenticatedUser();
   if (!user) return Response.json({ profile: null }, { status: 401, headers: noStoreHeaders() });
 
@@ -20,15 +28,15 @@ export async function GET() {
 
   try {
     const response = await fetch(CANONICAL_PERSONALIZATION_URL, {
+      method,
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
     });
-    if (!response.ok) return Response.json({ profile: null }, { headers: noStoreHeaders() });
-    const payload = (await response.json()) as { profile?: unknown };
-    return Response.json({ profile: payload.profile ?? null }, { headers: noStoreHeaders() });
+    const payload = (await response.json().catch(() => ({ profile: null }))) as { profile?: unknown; error?: string };
+    return Response.json(payload, { status: response.status, headers: noStoreHeaders() });
   } catch {
-    return Response.json({ profile: null }, { headers: noStoreHeaders() });
+    return Response.json({ profile: null }, { status: 503, headers: noStoreHeaders() });
   }
 }
 
