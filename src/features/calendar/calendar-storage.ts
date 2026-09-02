@@ -1,3 +1,6 @@
+import { saveLocalCalendar } from "@/lib/local-data/calendar";
+import { getConfiguredOwnerId } from "@/lib/local-data/owner";
+
 export const calendarStorageKey = "assessment-calendar-events-v1";
 export const calendarNotificationStorageKey = "assessment-calendar-notified-v1";
 
@@ -28,7 +31,23 @@ export function readCalendarEvents(): CalendarEvent[] {
 
 export function writeCalendarEvents(events: CalendarEvent[]) {
   window.localStorage.setItem(calendarStorageKey, JSON.stringify(events));
+  persistCalendar(events, readCalendarNotified());
   window.dispatchEvent(new CustomEvent("assessment-calendar-updated"));
+}
+
+export function readCalendarNotified(): Record<string, number> {
+  try {
+    const raw = window.localStorage.getItem(calendarNotificationStorageKey);
+    const value = raw ? JSON.parse(raw) : {};
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function writeCalendarNotified(notified: Record<string, number>) {
+  window.localStorage.setItem(calendarNotificationStorageKey, JSON.stringify(notified));
+  persistCalendar(readCalendarEvents(), notified);
 }
 
 export function eventTimestamp(event: CalendarEvent) {
@@ -36,13 +55,13 @@ export function eventTimestamp(event: CalendarEvent) {
 }
 
 export function eventTypeLabel(type: CalendarEventType) {
-  return {
-    deadline: "마감일",
-    presentation: "발표",
-    exam: "시험",
-    checkpoint: "중간 점검",
-    todo: "할 일",
-  }[type];
+  return { deadline: "마감일", presentation: "발표", exam: "시험", checkpoint: "중간 점검", todo: "할 일" }[type];
+}
+
+function persistCalendar(events: CalendarEvent[], notified: Record<string, number>) {
+  const ownerId = getConfiguredOwnerId();
+  if (!ownerId) return;
+  void saveLocalCalendar(ownerId, events, notified).catch(() => undefined);
 }
 
 function isCalendarEvent(value: unknown): value is CalendarEvent {
