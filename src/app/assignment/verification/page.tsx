@@ -66,7 +66,7 @@ export default function VerificationResultPage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-4 pb-28 pt-4 sm:px-6 sm:pt-6">
+    <main className="mx-auto min-h-screen max-w-3xl px-4 pb-32 pt-4 sm:px-6 sm:pt-6">
       <header className="sticky top-0 z-20 -mx-4 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -108,12 +108,19 @@ export default function VerificationResultPage() {
             </div>
           </section>
         ) : null}
+
+        <section className="mt-7 rounded-2xl border border-violet-200 bg-violet-50 p-4">
+          <p className="text-xs font-black text-violet-700">다음 단계 · 완성본</p>
+          <h2 className="mt-1 text-lg font-black text-slate-950">검증 결과를 바탕으로 최종 문서를 직접 수정할 수 있습니다.</h2>
+          <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">완성본에서도 AI 재실행·Chat 수정이 가능하고, 내용이 끝난 뒤 Word·한글·PDF·텍스트 형식을 선택합니다.</p>
+        </section>
       </article>
 
       <nav className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4.7rem)] z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur sm:bottom-0">
-        <div className="mx-auto flex max-w-3xl gap-2">
-          <Link className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700" href="/assignment/draft">← 초안</Link>
-          <Link className="inline-flex min-h-11 flex-[1.5] items-center justify-center rounded-xl bg-slate-950 px-3 text-sm font-black text-white" href="/assignment/workspace">작성 전략 보기</Link>
+        <div className="mx-auto grid max-w-3xl grid-cols-3 gap-2">
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700" href="/assignment/draft">← 초안</Link>
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700" href="/assignment/workspace">작성 전략</Link>
+          <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-violet-700 px-3 text-sm font-black text-white" href="/assignment/final">완성본 만들기 →</Link>
         </div>
       </nav>
     </main>
