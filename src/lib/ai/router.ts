@@ -44,18 +44,12 @@ type RegistryRow = {
   capabilities_json?: unknown;
   evaluation_profile_json?: unknown;
   production_approved?: unknown;
+  catalog_available?: unknown;
 };
 
 type RegistryCache = { records: ModelRecord[]; expiresAt: number };
-type AvailabilityCache = {
-  ids: Set<string>;
-  expiresAt: number;
-  live: boolean;
-  catalogSynced: boolean;
-};
 
 let registryCache: RegistryCache | undefined;
-let availabilityCache: AvailabilityCache | undefined;
 
 export type ModelRoutingContext = {
   subject?: string;
@@ -81,6 +75,14 @@ export type ModelCatalogRefresh = {
   observedAt: string;
 };
 
+/**
+ * Route an AI task using only the latest catalog snapshot stored in Supabase.
+ *
+ * NVIDIA's /models endpoint is intentionally NOT called from user requests.
+ * The external catalog is refreshed by the daily Vercel Cron endpoint and
+ * persisted as model_registry.catalog_available. Requests only rank models
+ * that are both present in that snapshot and fully production-approved.
+ */
 export async function routeModel({
   task,
   inputCharacters = 0,
@@ -92,32 +94,44 @@ export async function routeModel({
   preferSpeed?: boolean;
   context?: ModelRoutingContext;
 }): Promise<ModelRoute> {
-  const registry = await loadApprovedRegistry();
-  if (!registry.length) {
-    throw new Error("승인된 AI 모델이 Model Registry에 없습니다.");
-  }
-
-  const availability = await getAvailableApprovedModels(registry);
-  const candidates = availability.live
-    ? registry.filter((record) => availability.ids.has(record.id))
-    : registry;
-
+  const candidates = await loadApprovedRegistry();
   if (!candidates.length) {
-    throw new Error("현재 NVIDIA API에서 사용 가능한 승인 모델이 없습니다.");
+    throw new Error("일일 모델 목록에서 사용 가능한 승인 AI 모델이 없습니다.");
   }
 
   const speedPreferred = preferSpeed ?? (await requestPrefersFastResponse());
-  const difficulty = normalizeDifficulty(context.difficulty ?? inferDifficulty(context, task, inputCharacters));
+  const difficulty = normalizeDifficulty(
+    context.difficulty ?? inferDifficulty(context, task, inputCharacters),
+  );
   const subjectGroup = classifySubject(context.subject);
   const formatGroup = classifyFormat(context.assignmentType, context.format);
   const preferHigh =
     !speedPreferred &&
-    (difficulty >= 5 || task === "logic_critic" || task === "final_rewriter" || inputCharacters > 24_000);
+    (difficulty >= 5 ||
+      task === "logic_critic" ||
+      task === "final_rewriter" ||
+      inputCharacters > 24_000);
 
   const ranked = [...candidates].sort((a, b) => {
     const scoreDifference =
-      scoreModel(b, { task, difficulty, subjectGroup, formatGroup, preferHigh, speedPreferred, inputCharacters }) -
-      scoreModel(a, { task, difficulty, subjectGroup, formatGroup, preferHigh, speedPreferred, inputCharacters });
+      scoreModel(b, {
+        task,
+        difficulty,
+        subjectGroup,
+        formatGroup,
+        preferHigh,
+        speedPreferred,
+        inputCharacters,
+      }) -
+      scoreModel(a, {
+        task,
+        difficulty,
+        subjectGroup,
+        formatGroup,
+        preferHigh,
+        speedPreferred,
+        inputCharacters,
+      });
     if (scoreDifference !== 0) return scoreDifference;
     return b.priority - a.priority;
   });
@@ -131,7 +145,9 @@ export async function routeModel({
     context.subject ? `과목 ${context.subject}` : null,
     `난이도 ${difficulty}/7`,
     formatGroup !== "general" ? `형식 ${formatGroup}` : null,
-    context.schoolLevel && context.grade ? `${context.schoolLevel} ${context.grade}학년` : null,
+    context.schoolLevel && context.grade
+      ? `${context.schoolLevel} ${context.grade}학년`
+      : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -140,22 +156,21 @@ export async function routeModel({
     model: selected.id,
     fallback,
     reason: [
-      "Supabase Model Registry에서 승인 Provider/Model, 비중국계, 학생 데이터 정책, 보안·개인정보 검토, production approval을 Hard Filter로 적용했습니다.",
-      `${contextSummary || "기본 과제 조건"}과 현재 작업 단계(${task})를 함께 점수화해 모델을 선택했습니다.`,
+      "매일 자동 동기화된 NVIDIA 모델 목록과 Supabase Model Registry를 기준으로 후보를 구성했습니다.",
+      "승인 Provider/Model, 비중국계, 학생 데이터 정책, 보안·개인정보 검토, production approval을 Hard Filter로 적용했습니다.",
+      `${contextSummary || "기본 과제 조건"}과 현재 작업 단계(${task})를 점수화해 최적 모델을 선택했습니다.`,
       speedPreferred
         ? "빠른 응답 모드가 켜져 있어 효율성과 task affinity에 가중치를 높였습니다."
         : preferHigh
           ? "고난도·검증·장문 작업이라 고품질·추론·장문 처리 능력에 가중치를 높였습니다."
           : "현재 난이도와 형식에 맞춰 효율성과 품질의 균형을 우선했습니다.",
-      availability.live
-        ? availability.catalogSynced
-          ? "NVIDIA 실시간 모델 카탈로그와 교집합을 확인했고 새 모델은 검증 대기 후보로 자동 동기화했습니다."
-          : "NVIDIA 실시간 모델 카탈로그는 확인했지만 후보 Registry 동기화는 실패해 다음 실행에서 재시도합니다."
-        : "사용자 요청 경로에서는 승인 Registry를 즉시 사용하고 모델 카탈로그 갱신은 예약 작업에서 수행합니다.",
+      fallback
+        ? "1순위 모델 호출이 실패하면 다음 순위의 승인 모델을 대체 모델로 사용합니다."
+        : "현재 조건을 통과한 대체 모델은 없습니다.",
     ].join(" "),
     registryPolicy: "hard-filtered",
     registrySource: "supabase",
-    liveCatalogChecked: availability.live,
+    liveCatalogChecked: false,
   };
 }
 
@@ -180,11 +195,33 @@ function scoreModel(
   if (!context.preferHigh && model.quality === "efficient") score += 35;
   if (context.speedPreferred && model.quality === "efficient") score += 30;
 
-  if (context.difficulty >= model.difficultyMin && context.difficulty <= model.difficultyMax) score += 28;
-  else score -= Math.min(30, Math.abs(context.difficulty - clamp(context.difficulty, model.difficultyMin, model.difficultyMax)) * 8);
+  if (
+    context.difficulty >= model.difficultyMin &&
+    context.difficulty <= model.difficultyMax
+  ) {
+    score += 28;
+  } else {
+    score -= Math.min(
+      30,
+      Math.abs(
+        context.difficulty -
+          clamp(context.difficulty, model.difficultyMin, model.difficultyMax),
+      ) * 8,
+    );
+  }
 
-  if (model.subjectAffinity.includes(context.subjectGroup) || model.subjectAffinity.includes("all")) score += 24;
-  if (model.formatAffinity.includes(context.formatGroup) || model.formatAffinity.includes("all")) score += 22;
+  if (
+    model.subjectAffinity.includes(context.subjectGroup) ||
+    model.subjectAffinity.includes("all")
+  ) {
+    score += 24;
+  }
+  if (
+    model.formatAffinity.includes(context.formatGroup) ||
+    model.formatAffinity.includes("all")
+  ) {
+    score += 22;
+  }
 
   const reasoningHeavy =
     context.difficulty >= 5 ||
@@ -203,13 +240,30 @@ function scoreModel(
   return score;
 }
 
-function inferDifficulty(context: ModelRoutingContext, task: AgentTask, inputCharacters: number): number {
-  let difficulty = context.schoolLevel === "고등학교" ? 4 : context.schoolLevel === "중학교" ? 3 : 2;
-  if (typeof context.grade === "number") difficulty += Math.max(0, Math.min(2, context.grade - 1)) * 0.5;
+function inferDifficulty(
+  context: ModelRoutingContext,
+  task: AgentTask,
+  inputCharacters: number,
+): number {
+  let difficulty =
+    context.schoolLevel === "고등학교"
+      ? 4
+      : context.schoolLevel === "중학교"
+        ? 3
+        : 2;
+  if (typeof context.grade === "number") {
+    difficulty += Math.max(0, Math.min(2, context.grade - 1)) * 0.5;
+  }
   if (task === "logic_critic" || task === "final_rewriter") difficulty += 1.5;
   else if (task === "writer" || task === "strategy") difficulty += 0.7;
   if (classifySubject(context.subject) === "stem") difficulty += 0.5;
-  if (["report", "presentation", "experiment"].includes(classifyFormat(context.assignmentType, context.format))) difficulty += 0.5;
+  if (
+    ["report", "presentation", "experiment"].includes(
+      classifyFormat(context.assignmentType, context.format),
+    )
+  ) {
+    difficulty += 0.5;
+  }
   if (inputCharacters > 24_000) difficulty += 0.7;
   return Math.round(difficulty);
 }
@@ -217,8 +271,12 @@ function inferDifficulty(context: ModelRoutingContext, task: AgentTask, inputCha
 function classifySubject(subject?: string): string {
   const normalized = (subject ?? "").replace(/\s+/g, "").toLowerCase();
   if (!normalized) return "general";
-  if (/(수학|과학|물리|화학|생명|지구|정보|컴퓨터|과학탐구)/.test(normalized)) return "stem";
-  if (/(사회|역사|한국사|세계사|지리|경제|정치|법|윤리)/.test(normalized)) return "social";
+  if (/(수학|과학|물리|화학|생명|지구|정보|컴퓨터|과학탐구)/.test(normalized)) {
+    return "stem";
+  }
+  if (/(사회|역사|한국사|세계사|지리|경제|정치|법|윤리)/.test(normalized)) {
+    return "social";
+  }
   if (/(국어|영어|문학|언어|한문|외국어)/.test(normalized)) return "language";
   if (/(미술|음악|체육|예술)/.test(normalized)) return "arts";
   return "general";
@@ -242,13 +300,22 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+/**
+ * The only function that reads NVIDIA's external model catalog.
+ * It is called by /api/internal/model-catalog/sync from the daily Vercel Cron.
+ */
 export async function refreshModelCatalog(): Promise<ModelCatalogRefresh> {
   const apiKey = (process.env.NVIDIA_API_KEY || process.env.Nvidia_key)?.trim();
   if (!apiKey) throw new Error("NVIDIA_API_KEY가 설정되지 않았습니다.");
 
-  const baseUrl = (process.env.NVIDIA_BASE_URL?.trim() || "https://integrate.api.nvidia.com/v1").replace(/\/$/, "");
+  const baseUrl = (
+    process.env.NVIDIA_BASE_URL?.trim() || "https://integrate.api.nvidia.com/v1"
+  ).replace(/\/$/, "");
   const response = await fetch(`${baseUrl}/models`, {
-    headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+    },
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
@@ -257,7 +324,9 @@ export async function refreshModelCatalog(): Promise<ModelCatalogRefresh> {
     throw new Error(`NVIDIA 모델 카탈로그 조회에 실패했습니다. (NVIDIA_${response.status})`);
   }
 
-  const payload = (await response.json()) as { data?: Array<{ id?: unknown }> };
+  const payload = (await response.json()) as {
+    data?: Array<{ id?: unknown }>;
+  };
   const catalogIds = Array.from(
     new Set(
       (payload.data ?? [])
@@ -272,6 +341,7 @@ export async function refreshModelCatalog(): Promise<ModelCatalogRefresh> {
 
   const observedAt = new Date().toISOString();
   const synced = await syncCatalogCandidates(catalogIds, observedAt);
+  if (synced) registryCache = undefined;
   return { catalogIds, synced, observedAt };
 }
 
@@ -306,11 +376,13 @@ async function loadApprovedRegistry(now = Date.now()): Promise<ModelRecord[]> {
       "capabilities_json",
       "evaluation_profile_json",
       "production_approved",
+      "catalog_available",
     ].join(","),
     provider: "eq.nvidia",
     enabled: "eq.true",
     production_approved: "eq.true",
     deprecated: "eq.false",
+    catalog_available: "eq.true",
   });
 
   const response = await fetch(`${supabaseUrl}/rest/v1/model_registry?${query}`, {
@@ -327,10 +399,12 @@ async function loadApprovedRegistry(now = Date.now()): Promise<ModelRecord[]> {
   }
 
   const rows = (await response.json()) as RegistryRow[];
-  const records = rows.map(toModelRecord).filter((record): record is ModelRecord => record !== null);
+  const records = rows
+    .map(toModelRecord)
+    .filter((record): record is ModelRecord => record !== null);
 
   if (!records.length) {
-    throw new Error("Model Registry Hard Filter를 통과한 모델이 없습니다.");
+    throw new Error("일일 모델 목록과 Model Registry Hard Filter를 통과한 모델이 없습니다.");
   }
 
   registryCache = { records, expiresAt: now + 5 * 60 * 1_000 };
@@ -349,6 +423,7 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
     row.security_review_passed !== true ||
     row.privacy_policy_verified !== true ||
     row.production_approved !== true ||
+    row.catalog_available !== true ||
     row.deprecated === true ||
     typeof row.model_id !== "string" ||
     typeof row.developer_company !== "string" ||
@@ -363,8 +438,11 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
     return null;
   }
 
-  const evaluation = isRecord(row.evaluation_profile_json) ? row.evaluation_profile_json : {};
-  const quality: QualityTier = evaluation.qualityTier === "high" ? "high" : "efficient";
+  const evaluation = isRecord(row.evaluation_profile_json)
+    ? row.evaluation_profile_json
+    : {};
+  const quality: QualityTier =
+    evaluation.qualityTier === "high" ? "high" : "efficient";
   const priority =
     typeof evaluation.priority === "number" && Number.isFinite(evaluation.priority)
       ? evaluation.priority
@@ -404,12 +482,17 @@ function parseCapabilities(value: unknown): string[] {
 
 function parseStringArray(value: unknown): string[] {
   return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim().toLowerCase()).filter(Boolean)
+    ? value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean)
     : [];
 }
 
 function normalizeDifficultyNumber(value: unknown, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) ? normalizeDifficulty(value) : fallback;
+  return typeof value === "number" && Number.isFinite(value)
+    ? normalizeDifficulty(value)
+    : fallback;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -428,39 +511,6 @@ function isAgentTask(value: unknown): value is AgentTask {
   );
 }
 
-async function getAvailableApprovedModels(
-  registry: readonly ModelRecord[],
-  now = Date.now(),
-): Promise<AvailabilityCache> {
-  if (availabilityCache && availabilityCache.expiresAt > now) return availabilityCache;
-
-  try {
-    const catalog = await refreshModelCatalog();
-    availabilityCache = {
-      ids: new Set(catalog.catalogIds),
-      expiresAt: now + 5 * 60 * 1_000,
-      live: true,
-      catalogSynced: catalog.synced,
-    };
-  } catch (error) {
-    console.warn("NVIDIA 실시간 모델 카탈로그 확인 실패", {
-      errorCode: safeServiceErrorCode(error),
-    });
-    availabilityCache = {
-      ids: new Set(registry.map((model) => model.id)),
-      expiresAt: now + 60 * 1_000,
-      live: false,
-      catalogSynced: false,
-    };
-  }
-  return availabilityCache;
-}
-
-function safeServiceErrorCode(error: unknown): string {
-  const message = error instanceof Error ? error.message : "";
-  return message.match(/(?:NVIDIA|SUPABASE)_\d{3}/i)?.[0]?.toUpperCase() ?? "UNKNOWN";
-}
-
 async function syncCatalogCandidates(
   catalogIds: readonly string[],
   observedAt: string,
@@ -469,20 +519,23 @@ async function syncCatalogCandidates(
 
   try {
     const { supabaseUrl, secretKey } = readRegistryConfig();
-    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/sync_nvidia_model_catalog`, {
-      method: "POST",
-      headers: {
-        apikey: secretKey,
-        "Content-Type": "application/json",
-        Accept: "application/json",
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/sync_nvidia_model_catalog`,
+      {
+        method: "POST",
+        headers: {
+          apikey: secretKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          catalog_model_ids: catalogIds,
+          observed_at: observedAt,
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
       },
-      body: JSON.stringify({
-        catalog_model_ids: catalogIds,
-        observed_at: observedAt,
-      }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
-    });
+    );
 
     if (!response.ok) {
       console.warn(`NVIDIA 후보 모델 동기화 실패: SUPABASE_${response.status}`);
