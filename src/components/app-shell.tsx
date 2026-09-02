@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { Icon, type IconName } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
@@ -52,13 +52,26 @@ const mobileNavigation: NavigationItem[] = [
     icon: "sparkles",
     activePrefixes: ["/ai-tools", "/topic-recommender", "/assignment/setup/auto", "/grader"],
   },
+  {
+    href: "/create",
+    label: "만들기",
+    icon: "document",
+    activePrefixes: [
+      "/create",
+      "/assignment/report",
+      "/assignment/presentation",
+      "/assignment/inquiry",
+      "/assignment/setup/research-report",
+      "/assignment/setup/inquiry-report",
+      "/assignment/setup/presentation",
+      "/assignment/setup/visual-material",
+      "/assignment/setup/experiment",
+      "/assignment/setup/real-life-inquiry",
+    ],
+  },
   { href: "/calendar", label: "캘린더", icon: "calendar" },
   { href: "/settings", label: "설정", icon: "settings" },
 ];
-
-const createNavigation: NavigationItem[] = navigation.filter((item) =>
-  ["보고서", "발표", "탐구"].includes(item.label),
-);
 
 function isActive(pathname: string, item: NavigationItem) {
   if (item.href === "/") return pathname === "/";
@@ -76,9 +89,7 @@ export function AppShell({
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
-  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const historyActive = pathname === "/history" || pathname.startsWith("/history/");
-  const createActive = createNavigation.some((item) => isActive(pathname, item));
 
   return (
     <div className="min-h-dvh text-slate-950">
@@ -146,78 +157,14 @@ export function AppShell({
 
       <div className="pb-24 md:pb-8">{children}</div>
 
-      {createMenuOpen ? (
-        <div className="md:hidden">
-          <button
-            aria-label="만들기 메뉴 닫기"
-            className="fixed inset-0 z-[55] bg-slate-950/20 backdrop-blur-[1px]"
-            onClick={() => setCreateMenuOpen(false)}
-            type="button"
-          />
-          <div className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[60] mx-auto max-w-md rounded-[1.6rem] border border-violet-100 bg-white p-3 shadow-2xl">
-            <div className="mb-2 flex items-center justify-between px-2 pt-1">
-              <div>
-                <p className="text-sm font-black text-slate-900">수행평가 만들기</p>
-                <p className="mt-0.5 text-xs font-semibold text-slate-500">원하는 작업 종류를 선택하세요.</p>
-              </div>
-              <button
-                aria-label="닫기"
-                className="grid size-9 place-items-center rounded-full bg-slate-100 text-slate-500"
-                onClick={() => setCreateMenuOpen(false)}
-                type="button"
-              >
-                <Icon className="size-4" name="close" />
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {createNavigation.map((item) => (
-                <Link
-                  className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl bg-violet-50 px-2 text-sm font-black text-violet-800 transition active:scale-[0.97]"
-                  href={item.href}
-                  key={item.href}
-                  onClick={() => setCreateMenuOpen(false)}
-                >
-                  <Icon className="size-6" name={item.icon} />
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       <nav
         aria-label="모바일 주요 메뉴"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-violet-100 bg-white/95 px-[max(.35rem,env(safe-area-inset-left))] pb-[max(.4rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl md:hidden"
       >
         <div className="mx-auto grid max-w-xl grid-cols-5">
-          {mobileNavigation.slice(0, 2).map((item) => {
+          {mobileNavigation.map((item) => {
             const active = isActive(pathname, item);
-            return (
-              <MobileNavLink active={active} item={item} key={item.href} />
-            );
-          })}
-
-          <button
-            aria-expanded={createMenuOpen}
-            aria-label="수행평가 만들기"
-            className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[0.68rem] font-black transition active:scale-[0.97] ${
-              createActive || createMenuOpen ? "text-violet-700" : "text-slate-400"
-            }`}
-            onClick={() => setCreateMenuOpen((open) => !open)}
-            type="button"
-          >
-            <span className={`grid size-8 place-items-center rounded-xl ${createActive || createMenuOpen ? "bg-violet-100" : "bg-slate-100"}`}>
-              <Icon className="size-5" name="document" />
-            </span>
-            만들기
-          </button>
-
-          {mobileNavigation.slice(2).map((item) => {
-            const active = isActive(pathname, item);
-            return (
-              <MobileNavLink active={active} item={item} key={item.href} />
-            );
+            return <MobileNavLink active={active} item={item} key={item.href} />;
           })}
         </div>
       </nav>
@@ -234,7 +181,9 @@ function MobileNavLink({ item, active }: { item: NavigationItem; active: boolean
       }`}
       href={item.href}
     >
-      <Icon className="size-5" name={item.icon} />
+      <span className={item.href === "/create" ? `grid size-8 place-items-center rounded-xl ${active ? "bg-violet-100" : "bg-slate-100"}` : undefined}>
+        <Icon className="size-5" name={item.icon} />
+      </span>
       {item.label}
     </Link>
   );
