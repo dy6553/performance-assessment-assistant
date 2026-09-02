@@ -3,10 +3,11 @@
 import { useEffect } from "react";
 
 import {
-  calendarNotificationStorageKey,
   eventTimestamp,
   eventTypeLabel,
   readCalendarEvents,
+  readCalendarNotified,
+  writeCalendarNotified,
 } from "@/features/calendar/calendar-storage";
 
 export function CalendarReminders() {
@@ -15,7 +16,7 @@ export function CalendarReminders() {
       if (!("Notification" in window) || Notification.permission !== "granted") return;
 
       const now = Date.now();
-      const notified = readNotified();
+      const notified = readCalendarNotified();
       let changed = false;
       for (const event of readCalendarEvents()) {
         if (event.completed || event.reminderMinutes === null) continue;
@@ -31,7 +32,7 @@ export function CalendarReminders() {
         notified[notificationKey] = now;
         changed = true;
       }
-      if (changed) window.localStorage.setItem(calendarNotificationStorageKey, JSON.stringify(notified));
+      if (changed) writeCalendarNotified(notified);
     }
 
     checkReminders();
@@ -46,16 +47,6 @@ export function CalendarReminders() {
   }, []);
 
   return null;
-}
-
-function readNotified(): Record<string, number> {
-  try {
-    const raw = window.localStorage.getItem(calendarNotificationStorageKey);
-    const value = raw ? JSON.parse(raw) : {};
-    return value && typeof value === "object" ? value as Record<string, number> : {};
-  } catch {
-    return {};
-  }
 }
 
 function formatDateTime(date: string, time: string) {
