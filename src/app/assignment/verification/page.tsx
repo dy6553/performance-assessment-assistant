@@ -28,7 +28,10 @@ export default function VerificationResultPage() {
   const [result, setResult] = useState<VerificationWithScore | null>(null);
 
   useEffect(() => {
-    setResult(readStorage<VerificationWithScore>(assessmentVerificationStorageKey));
+    const frame = window.requestAnimationFrame(() => {
+      setResult(readStorage<VerificationWithScore>(assessmentVerificationStorageKey));
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const revisedText = useMemo(() => {

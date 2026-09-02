@@ -29,18 +29,21 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const selectedType = getAssignmentTypeBySlug(typeSlug);
-    if (!selectedType) return;
+    const frame = window.requestAnimationFrame(() => {
+      const selectedType = getAssignmentTypeBySlug(typeSlug);
+      if (!selectedType) return;
 
-    const stored = readStorage<Partial<AssignmentInput>>(assessmentFlowStorageKey);
-    const base = normalizeAssignment(stored);
-    const next = keepType && base.assignmentType !== "자동 분석"
-      ? base
-      : { ...base, assignmentType: selectedType.value };
+      const stored = readStorage<Partial<AssignmentInput>>(assessmentFlowStorageKey);
+      const base = normalizeAssignment(stored);
+      const next = keepType && base.assignmentType !== "자동 분석"
+        ? base
+        : { ...base, assignmentType: selectedType.value };
 
-    writeStorage(assessmentFlowStorageKey, next);
-    setAssignment(next);
-    setHydrated(true);
+      writeStorage(assessmentFlowStorageKey, next);
+      setAssignment(next);
+      setHydrated(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [keepType, typeSlug]);
 
   function update<K extends keyof AssignmentInput>(key: K, value: AssignmentInput[K]) {

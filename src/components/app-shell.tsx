@@ -40,6 +40,7 @@ const navigation: NavigationItem[] = [
     icon: "flask",
     activePrefixes: ["/assignment/inquiry", "/assignment/setup/experiment", "/assignment/setup/real-life-inquiry"],
   },
+  { href: "/calendar", label: "캘린더", icon: "calendar" },
   { href: "/settings", label: "설정", icon: "settings" },
 ];
 
@@ -131,7 +132,7 @@ export function AppShell({
         aria-label="모바일 주요 메뉴"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-violet-100 bg-white/95 px-[max(.35rem,env(safe-area-inset-left))] pb-[max(.4rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl md:hidden"
       >
-        <div className="mx-auto grid max-w-lg grid-cols-6">
+        <div className="mx-auto grid max-w-xl grid-cols-7">
           {navigation.map((item) => {
             const active = isActive(pathname, item);
             return (

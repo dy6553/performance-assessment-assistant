@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { AiRequestProgress } from "@/components/ai-request-progress";
+import { AiAssistant } from "@/components/ai-assistant";
+import { CalendarReminders } from "@/components/calendar-reminders";
 import { AppShell } from "@/components/app-shell";
 import { PreferenceRuntime } from "@/components/preference-runtime";
 import { SchoolDataScopeGuard } from "@/components/school-data-scope-guard";
@@ -66,7 +68,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <PreferenceRuntime />
         <SchoolDataScopeGuard scope={dataScope} />
         <AiRequestProgress />
+        <CalendarReminders />
         <AppShell isAdmin={isAdmin} signedIn={signedIn}>{children}</AppShell>
+        <AiAssistant />
       </body>
     </html>
   );

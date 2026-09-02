@@ -33,9 +33,12 @@ export default function DraftResultPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setAssignment(readStorage<AssignmentInput>(assessmentFlowStorageKey));
-    setAnalysis(readStorage<AnalysisResult>(assessmentAnalysisStorageKey));
-    setDraft(readStorage<DraftResult>(assessmentDraftStorageKey));
+    const frame = window.requestAnimationFrame(() => {
+      setAssignment(readStorage<AssignmentInput>(assessmentFlowStorageKey));
+      setAnalysis(readStorage<AnalysisResult>(assessmentAnalysisStorageKey));
+      setDraft(readStorage<DraftResult>(assessmentDraftStorageKey));
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const draftText = useMemo(() => {

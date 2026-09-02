@@ -101,20 +101,23 @@ export function AiRequestProgress() {
   const topicDifficultyRef = useRef(4);
 
   useEffect(() => {
-    setNotificationPermission(canUseNotifications() ? Notification.permission : "unsupported");
+    const frame = window.requestAnimationFrame(() => {
+      setNotificationPermission(canUseNotifications() ? Notification.permission : "unsupported");
 
-    try {
-      const stored = sessionStorage.getItem(topicOptionsStorageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored) as { request?: unknown; difficulty?: unknown };
-        if (typeof parsed.request === "string") setTopicRequest(parsed.request);
-        if (typeof parsed.difficulty === "number" && parsed.difficulty >= 1 && parsed.difficulty <= 7) {
-          setTopicDifficulty(Math.round(parsed.difficulty));
+      try {
+        const stored = sessionStorage.getItem(topicOptionsStorageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored) as { request?: unknown; difficulty?: unknown };
+          if (typeof parsed.request === "string") setTopicRequest(parsed.request);
+          if (typeof parsed.difficulty === "number" && parsed.difficulty >= 1 && parsed.difficulty <= 7) {
+            setTopicDifficulty(Math.round(parsed.difficulty));
+          }
         }
+      } catch {
+        // 세션 저장소를 사용할 수 없는 환경에서는 기본값으로 계속 진행합니다.
       }
-    } catch {
-      // 세션 저장소를 사용할 수 없는 환경에서는 기본값으로 계속 진행합니다.
-    }
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {

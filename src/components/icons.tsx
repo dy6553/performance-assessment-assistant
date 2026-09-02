@@ -5,6 +5,9 @@ export type IconName =
   | "presentation"
   | "flask"
   | "history"
+  | "calendar"
+  | "bell"
+  | "close"
   | "settings"
   | "chevron-left"
   | "check";
@@ -40,6 +43,18 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
           <path d="M5.5 10.5A7.5 7.5 0 1 1 6 16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
           <path d="M12 8v4l3 2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
         </>
+      ) : name === "calendar" ? (
+        <>
+          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+          <path d="M7 3v4M17 3v4M3 10h18M7 14h2M11 14h2M15 14h2M7 18h2M11 18h2" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        </>
+      ) : name === "bell" ? (
+        <>
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+          <path d="M10 21h4" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+        </>
+      ) : name === "close" ? (
+        <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
       ) : name === "settings" ? (
         <>
           <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
