@@ -83,7 +83,7 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
       return;
     }
     if (assignment.teacherInstruction.trim().length < 2 && assignment.rubricText.trim().length < 2) {
-      setError("과제 안내서·평가기준표 PDF를 올리거나 추가 설명에 교사 과제 설명을 입력해 주세요.");
+      setError("과제 안내서·평가기준표 PDF나 사진을 올리거나 추가 설명에 교사 과제 설명을 입력해 주세요.");
       return;
     }
     writeStorage(assessmentFlowStorageKey, assignment);
@@ -169,7 +169,7 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
           <div className="mb-2 flex items-center gap-2 text-sm font-black text-slate-700">
             과제 문서 <span className="text-violet-700" aria-label="필수">*</span>
           </div>
-          <p className="mb-3 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내서 PDF가 있으면 올려 주세요. PDF가 없다면 아래 추가 설명에 교사 안내 내용을 입력하면 됩니다.</p>
+          <p className="mb-3 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내서가 있으면 PDF 또는 사진으로 올려 주세요. 파일이 없다면 아래 추가 설명에 교사 안내 내용을 입력하면 됩니다.</p>
           <PdfRubricUpload
             disabled={false}
             onExtracted={(text) => update("rubricText", text)}
@@ -193,7 +193,7 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
                   className={`${inputClass} min-h-28 resize-y`}
                   value={assignment.teacherInstruction}
                   onChange={(event) => update("teacherInstruction", event.target.value)}
-                  placeholder="PDF에 없는 선생님 설명, 제출 방법, 주의사항 등이 있다면 입력하세요. PDF가 없다면 과제 안내 내용을 여기에 입력하세요."
+                  placeholder="PDF나 사진에 없는 선생님 설명, 제출 방법, 주의사항 등이 있다면 입력하세요. 파일이 없다면 과제 안내 내용을 여기에 입력하세요."
                 />
               </Field>
             </div>
