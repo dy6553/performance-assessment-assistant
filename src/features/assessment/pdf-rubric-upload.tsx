@@ -5,6 +5,7 @@ import { useState } from "react";
 import { readApiResponse } from "@/lib/http/client-response";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_BATCH_FILES = 10;
 const DIRECT_UPLOAD_BYTES = 4 * 1024 * 1024;
 const MAX_PAGES = 6;
 const CLIENT_RENDER_LONG_EDGE = 1_400;
@@ -25,6 +26,13 @@ type RubricPayload = {
   error?: string;
 };
 
+type ProcessedDocument = {
+  documentType: DocumentType;
+  documentText: string;
+  pages: number;
+  uncertainCount: number;
+};
+
 export function PdfRubricUpload({
   disabled,
   onExtracted,
@@ -41,58 +49,74 @@ export function PdfRubricUpload({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function upload(file: File) {
-    const pdf = isPdf(file);
-    const image = isSupportedImage(file);
-
-    if (!pdf && !image) {
-      setError("PDF 또는 JPG·PNG·WebP 사진만 업로드할 수 있습니다.");
+  async function upload(files: File[]) {
+    if (files.length < 1) return;
+    if (files.length > MAX_BATCH_FILES) {
+      setError(`한 번에 최대 ${MAX_BATCH_FILES}개 파일까지 선택할 수 있습니다.`);
       return;
     }
-    if (file.size > MAX_FILE_BYTES) {
-      setError("파일은 20MB 이하로 올려 주세요.");
-      return;
+
+    for (const file of files) {
+      if (!isPdf(file) && !isSupportedImage(file)) {
+        setError(`${file.name}: PDF 또는 JPG·PNG·WebP 사진만 업로드할 수 있습니다.`);
+        return;
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        setError(`${file.name}: 파일은 20MB 이하로 올려 주세요.`);
+        return;
+      }
     }
 
     setBusy(true);
     setError("");
-    if (pdf) {
-      setStatus(file.size > DIRECT_UPLOAD_BYTES ? "PDF를 압축한 뒤 AI가 문서 종류와 내용을 확인하고 있습니다." : "AI가 PDF 종류와 내용을 확인하고 있습니다.");
-    } else {
-      setStatus("사진을 선명하게 변환한 뒤 AI가 문서 종류와 내용을 확인하고 있습니다.");
-    }
+
+    const rubricTexts: string[] = [];
+    const guideTexts: string[] = [];
+    const failures: string[] = [];
+    let totalPages = 0;
+    let uncertainCount = 0;
 
     try {
-      const response = pdf
-        ? file.size > DIRECT_UPLOAD_BYTES
-          ? await uploadCompressedPdf(file, documentMode)
-          : await uploadDirectPdf(file, documentMode)
-        : await uploadPhoto(file, documentMode);
-      const payload = await readApiResponse<RubricPayload>(response, "문서를 판독하지 못했습니다.");
-      const documentText = payload.documentText ?? payload.rubricText;
-      if (!response.ok || !documentText || !payload.documentType) {
-        throw new Error(payload.error || "문서를 판독하지 못했습니다.");
-      }
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        setStatus(`${index + 1}/${files.length} · ${file.name} 판독 중...`);
 
-      if (payload.documentType === "guide") {
-        if (onGuideExtracted) {
-          onGuideExtracted(documentText);
-        } else if (!applyTeacherInstruction(documentText)) {
-          throw new Error("안내문 내용을 과제 설명 칸에 반영하지 못했습니다. 다시 시도해 주세요.");
+        try {
+          const result = await processFile(file, documentMode);
+          totalPages += result.pages;
+          uncertainCount += result.uncertainCount;
+          if (result.documentType === "rubric") rubricTexts.push(result.documentText);
+          else guideTexts.push(result.documentText);
+        } catch (caught) {
+          failures.push(`${file.name}: ${caught instanceof Error ? caught.message : "문서를 판독하지 못했습니다."}`);
         }
-      } else {
-        onExtracted(documentText);
       }
 
-      const label = payload.documentType === "rubric" ? "평가기준표" : "수행평가 안내문";
-      setStatus(
-        payload.uncertainText?.length
-          ? `${label}로 판별 · ${payload.pages ?? 0}페이지 완료 · 확인 필요한 글자 ${payload.uncertainText.length}곳`
-          : `${label}로 판별 · ${payload.pages ?? 0}페이지 반영 완료`,
-      );
-    } catch (caught) {
-      setStatus("");
-      setError(caught instanceof Error ? caught.message : "문서를 판독하지 못했습니다.");
+      if (rubricTexts.length) onExtracted(rubricTexts.join("\n\n"));
+      if (guideTexts.length) {
+        const guideText = guideTexts.join("\n\n");
+        if (onGuideExtracted) {
+          onGuideExtracted(guideText);
+        } else if (!applyTeacherInstruction(guideText)) {
+          failures.push("안내문 내용을 과제 설명 칸에 반영하지 못했습니다.");
+        }
+      }
+
+      const successCount = rubricTexts.length + guideTexts.length;
+      if (successCount > 0) {
+        const parts = [
+          `${successCount}/${files.length}개 반영 완료`,
+          rubricTexts.length ? `평가기준표 ${rubricTexts.length}개` : "",
+          guideTexts.length ? `안내문 ${guideTexts.length}개` : "",
+          totalPages ? `총 ${totalPages}페이지` : "",
+          uncertainCount ? `확인 필요한 글자 ${uncertainCount}곳` : "",
+        ].filter(Boolean);
+        setStatus(parts.join(" · "));
+      } else {
+        setStatus("");
+      }
+
+      setError(failures.join("\n"));
     } finally {
       setBusy(false);
     }
@@ -103,27 +127,48 @@ export function PdfRubricUpload({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-black text-slate-900">과제 문서 추가 <span className="font-semibold text-slate-400">(선택)</span></p>
-          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내문을 PDF 또는 사진으로 올리면 AI가 종류를 판별해 알맞은 칸에 반영합니다. PDF 최대 6페이지 · 파일당 20MB</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내문을 PDF 또는 사진으로 한 번에 여러 개 올릴 수 있습니다. AI가 각 파일의 종류를 판별해 알맞은 칸에 합쳐 반영합니다. 한 번에 최대 10개 · PDF 각 최대 6페이지 · 파일당 20MB</p>
         </div>
         <label className={`inline-flex min-h-11 shrink-0 items-center rounded-xl bg-violet-600 px-4 text-sm font-black text-white ${disabled || busy ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
-          {busy ? "판독 중..." : status ? "다른 문서 추가" : "PDF / 사진 추가"}
+          {busy ? "여러 문서 판독 중..." : status ? "파일 더 추가" : "PDF / 사진 여러 개 추가"}
           <input
             accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp"
             className="sr-only"
             disabled={disabled || busy}
+            multiple
             onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
+              const files = Array.from(event.currentTarget.files ?? []);
               event.currentTarget.value = "";
-              if (file) void upload(file);
+              if (files.length) void upload(files);
             }}
             type="file"
           />
         </label>
       </div>
       {status ? <p aria-live="polite" className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-bold text-violet-700">{status}</p> : null}
-      {error ? <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">{error}</p> : null}
+      {error ? <p role="alert" className="mt-3 whitespace-pre-line rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">{error}</p> : null}
     </div>
   );
+}
+
+async function processFile(file: File, documentType: DocumentMode): Promise<ProcessedDocument> {
+  const pdf = isPdf(file);
+  const response = pdf
+    ? file.size > DIRECT_UPLOAD_BYTES
+      ? await uploadCompressedPdf(file, documentType)
+      : await uploadDirectPdf(file, documentType)
+    : await uploadPhoto(file, documentType);
+  const payload = await readApiResponse<RubricPayload>(response, "문서를 판독하지 못했습니다.");
+  const documentText = payload.documentText ?? payload.rubricText;
+  if (!response.ok || !documentText || !payload.documentType) {
+    throw new Error(payload.error || "문서를 판독하지 못했습니다.");
+  }
+  return {
+    documentType: payload.documentType,
+    documentText,
+    pages: payload.pages ?? (pdf ? 0 : 1),
+    uncertainCount: payload.uncertainText?.length ?? 0,
+  };
 }
 
 function isPdf(file: File) {
