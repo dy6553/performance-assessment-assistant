@@ -23,6 +23,7 @@ export const SETTINGS_IMPORT_NOTICE_KEY = "assessment-settings-imported";
 export const DEFAULT_CURRICULUM_KEY = "assessment-default-curriculum";
 export const DEFAULT_SCHOOL_LEVEL_KEY = "assessment-default-school-level";
 export const DEFAULT_GRADE_KEY = "assessment-default-grade";
+// Legacy cleanup key only. Subject defaults are intentionally unsupported.
 export const DEFAULT_SUBJECT_KEY = "assessment-default-subject";
 export const DEFAULT_ASSIGNMENT_TYPE_KEY = "assessment-default-assignment-type";
 
@@ -50,7 +51,6 @@ export const SETTINGS_BACKUP_KEYS = [
   DEFAULT_CURRICULUM_KEY,
   DEFAULT_SCHOOL_LEVEL_KEY,
   DEFAULT_GRADE_KEY,
-  DEFAULT_SUBJECT_KEY,
   DEFAULT_ASSIGNMENT_TYPE_KEY,
   FILE_NAME_FORMAT_KEY,
   FILE_NAME_PREFIX_KEY,
@@ -112,8 +112,8 @@ export function readAssignmentDefaultPreferences(): AssignmentDefaultPreferences
   const gradeRaw = Number(localStorage.getItem(DEFAULT_GRADE_KEY));
   const grade = Number.isInteger(gradeRaw) ? Math.min(Math.max(gradeRaw, 1), maxGrade) : 1;
 
-  const subjectRaw = localStorage.getItem(DEFAULT_SUBJECT_KEY)?.trim();
-  const subject = subjectRaw ? subjectRaw.slice(0, 80) : defaultAssignmentPreferences.subject;
+  // Do not read a legacy subject value. The current assignment must receive its subject directly from the user.
+  const subject = "";
 
   const typeRaw = localStorage.getItem(DEFAULT_ASSIGNMENT_TYPE_KEY);
   const assignmentType = typeRaw === "조사·보고서" || typeRaw === "발표·토론" || typeRaw === "실험·탐구"
