@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { readApiResponse } from "@/lib/http/client-response";
+import { saveCurrentProjectFile } from "@/lib/local-data/files";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_BATCH_FILES = 10;
@@ -75,13 +76,21 @@ export function PdfRubricUpload({
     const failures: string[] = [];
     let totalPages = 0;
     let uncertainCount = 0;
+    let locallyStored = 0;
 
     try {
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
-        setStatus(`${index + 1}/${files.length} · ${file.name} 판독 중...`);
+        setStatus(`${index + 1}/${files.length} · ${file.name} 기기에 저장하고 판독 중...`);
 
         try {
+          try {
+            const meta = await saveCurrentProjectFile(file);
+            if (meta) locallyStored += 1;
+          } catch {
+            failures.push(`${file.name}: 원본을 기기에 보관하지 못했습니다. 판독 결과는 계속 사용할 수 있습니다.`);
+          }
+
           const result = await processFile(file, documentMode);
           totalPages += result.pages;
           uncertainCount += result.uncertainCount;
@@ -95,26 +104,22 @@ export function PdfRubricUpload({
       if (rubricTexts.length) onExtracted(rubricTexts.join("\n\n"));
       if (guideTexts.length) {
         const guideText = guideTexts.join("\n\n");
-        if (onGuideExtracted) {
-          onGuideExtracted(guideText);
-        } else if (!applyTeacherInstruction(guideText)) {
-          failures.push("안내문 내용을 과제 설명 칸에 반영하지 못했습니다.");
-        }
+        if (onGuideExtracted) onGuideExtracted(guideText);
+        else if (!applyTeacherInstruction(guideText)) failures.push("안내문 내용을 과제 설명 칸에 반영하지 못했습니다.");
       }
 
       const successCount = rubricTexts.length + guideTexts.length;
       if (successCount > 0) {
         const parts = [
           `${successCount}/${files.length}개 반영 완료`,
+          locallyStored ? `원본 ${locallyStored}개 기기 저장` : "",
           rubricTexts.length ? `평가기준표 ${rubricTexts.length}개` : "",
           guideTexts.length ? `안내문 ${guideTexts.length}개` : "",
           totalPages ? `총 ${totalPages}페이지` : "",
           uncertainCount ? `확인 필요한 글자 ${uncertainCount}곳` : "",
         ].filter(Boolean);
         setStatus(parts.join(" · "));
-      } else {
-        setStatus("");
-      }
+      } else setStatus("");
 
       setError(failures.join("\n"));
     } finally {
@@ -127,7 +132,7 @@ export function PdfRubricUpload({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-black text-slate-900">과제 문서 추가 <span className="font-semibold text-slate-400">(선택)</span></p>
-          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내문을 PDF 또는 사진으로 한 번에 여러 개 올릴 수 있습니다. AI가 각 파일의 종류를 판별해 알맞은 칸에 합쳐 반영합니다. 한 번에 최대 10개 · PDF 각 최대 6페이지 · 파일당 20MB</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내문을 PDF 또는 사진으로 한 번에 여러 개 올릴 수 있습니다. 원본은 우선 이 기기의 OPFS에 저장하고, 지원하지 않는 환경에서는 IndexedDB Blob으로 보관합니다. AI에는 판독에 필요한 현재 파일만 전송합니다.</p>
         </div>
         <label className={`inline-flex min-h-11 shrink-0 items-center rounded-xl bg-violet-600 px-4 text-sm font-black text-white ${disabled || busy ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
           {busy ? "여러 문서 판독 중..." : status ? "파일 더 추가" : "PDF / 사진 여러 개 추가"}
@@ -160,9 +165,7 @@ async function processFile(file: File, documentType: DocumentMode): Promise<Proc
     : await uploadPhoto(file, documentType);
   const payload = await readApiResponse<RubricPayload>(response, "문서를 판독하지 못했습니다.");
   const documentText = payload.documentText ?? payload.rubricText;
-  if (!response.ok || !documentText || !payload.documentType) {
-    throw new Error(payload.error || "문서를 판독하지 못했습니다.");
-  }
+  if (!response.ok || !documentText || !payload.documentType) throw new Error(payload.error || "문서를 판독하지 못했습니다.");
   return {
     documentType: payload.documentType,
     documentText,
@@ -229,14 +232,11 @@ async function renderPhotoForUpload(file: File) {
 async function renderPdfForUpload(file: File) {
   const pdfjs = await import("pdfjs-dist");
   pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-
   const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
   const pdfDocument = await loadingTask.promise;
-
   try {
     if (pdfDocument.numPages < 1) throw new Error("PDF에 페이지가 없습니다.");
     if (pdfDocument.numPages > MAX_PAGES) throw new Error(`PDF는 ${MAX_PAGES}페이지 이하로 올려 주세요.`);
-
     const pageImages: string[] = [];
     for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
       const page = await pdfDocument.getPage(pageNumber);
@@ -248,7 +248,6 @@ async function renderPdfForUpload(file: File) {
       canvas.height = Math.ceil(viewport.height);
       const context = canvas.getContext("2d", { alpha: false });
       if (!context) throw new Error("PDF 페이지를 변환할 수 없습니다.");
-
       context.fillStyle = "#ffffff";
       context.fillRect(0, 0, canvas.width, canvas.height);
       await page.render({ canvas, canvasContext: context, viewport }).promise;
@@ -264,14 +263,10 @@ async function renderPdfForUpload(file: File) {
 }
 
 function applyTeacherInstruction(text: string) {
-  const textarea = Array.from(window.document.querySelectorAll("textarea")).find((element) =>
-    element.placeholder.includes("수행평가 안내문"),
-  );
+  const textarea = Array.from(window.document.querySelectorAll("textarea")).find((element) => element.placeholder.includes("수행평가 안내문"));
   if (!textarea) return false;
-
   const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
   if (!setter) return false;
-
   setter.call(textarea, text);
   textarea.dispatchEvent(new Event("input", { bubbles: true }));
   return true;
