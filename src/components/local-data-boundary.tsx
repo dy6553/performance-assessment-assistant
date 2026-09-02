@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { LOCAL_PROJECT_KEYS, persistCurrentProject } from "@/lib/local-data/compat";
 import { hydrateAndMigrateLocalData } from "@/lib/local-data/migration";
 import { configureLocalOwner } from "@/lib/local-data/owner";
 
@@ -36,6 +37,41 @@ export function LocalDataBoundary({ ownerId, children }: { ownerId: string | nul
     return () => window.removeEventListener("assessment-local-save-state", onSave);
   }, []);
 
+  useEffect(() => {
+    if (!ownerId || !ready) return;
+    let lastSnapshot = cacheFingerprint();
+    let writing = false;
+
+    async function flushIfChanged(force = false) {
+      const next = cacheFingerprint();
+      if (!force && next === lastSnapshot) return;
+      if (writing) return;
+      writing = true;
+      setSaveState("saving");
+      try {
+        await persistCurrentProject();
+        lastSnapshot = next;
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+      } finally {
+        writing = false;
+      }
+    }
+
+    const timer = window.setInterval(() => void flushIfChanged(), 450);
+    const onVisibility = () => { if (document.visibilityState === "hidden") void flushIfChanged(true); };
+    const onPageHide = () => void flushIfChanged(true);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      void flushIfChanged(true);
+    };
+  }, [ownerId, ready]);
+
   const workPath = pathname.startsWith("/assignment") || pathname.startsWith("/calendar");
   if (!ready && workPath) {
     return (
@@ -58,4 +94,12 @@ export function LocalDataBoundary({ ownerId, children }: { ownerId: string | nul
       ) : null}
     </>
   );
+}
+
+function cacheFingerprint() {
+  try {
+    return Object.values(LOCAL_PROJECT_KEYS).map((key) => window.sessionStorage.getItem(key) ?? "").join("\u001f");
+  } catch {
+    return "";
+  }
 }
