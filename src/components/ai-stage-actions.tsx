@@ -140,7 +140,7 @@ export function AiStageActions() {
 
   return (
     <>
-      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.4rem)] left-4 z-[58] flex max-w-[calc(100vw-2rem)] gap-2 md:bottom-6 md:left-6">
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+9.3rem)] left-4 z-[58] flex max-w-[calc(100vw-2rem)] gap-2 md:bottom-6 md:left-6">
         <button
           className="inline-flex min-h-12 items-center gap-2 rounded-full border border-violet-200 bg-white px-4 text-sm font-black text-violet-800 shadow-lg transition active:scale-[0.98]"
           onClick={() => setOpen(true)}
