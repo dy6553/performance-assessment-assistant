@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { AiRequestProgress } from "@/components/ai-request-progress";
 import { AiAssistant } from "@/components/ai-assistant";
+import { AiStageActions } from "@/components/ai-stage-actions";
 import { CalendarReminders } from "@/components/calendar-reminders";
 import { AppShell } from "@/components/app-shell";
 import { PreferenceRuntime } from "@/components/preference-runtime";
@@ -70,6 +71,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <AiRequestProgress />
         <CalendarReminders />
         <AppShell isAdmin={isAdmin} signedIn={signedIn}>{children}</AppShell>
+        <AiStageActions />
         <AiAssistant />
       </body>
     </html>
