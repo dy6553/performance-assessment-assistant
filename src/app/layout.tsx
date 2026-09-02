@@ -7,33 +7,27 @@ import { AiAssistant } from "@/components/ai-assistant";
 import { AiStageActions } from "@/components/ai-stage-actions";
 import { CalendarReminders } from "@/components/calendar-reminders";
 import { AppShell } from "@/components/app-shell";
+import { LocalDataBoundary } from "@/components/local-data-boundary";
 import { PreferenceRuntime } from "@/components/preference-runtime";
 import { SchoolDataScopeGuard } from "@/components/school-data-scope-guard";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { getAdminContext } from "@/features/admin/server/auth";
 import { ACCESS_COOKIE, SCHOOL_SCOPE_COOKIE } from "@/lib/supabase/auth-cookies";
+import { getAuthenticatedUser } from "@/lib/supabase/server/auth";
 import { getCurrentUserProfile } from "@/lib/supabase/server/profile";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: {
-    default: "수행평가 도우미",
-    template: "%s | 수행평가 도우미",
-  },
-  description:
-    "교사 요구조건·교육과정·루브릭을 먼저 분석하고 전략, 초안, 검증 근거를 함께 제공하는 수행평가 AI 앱",
+  title: { default: "수행평가 도우미", template: "%s | 수행평가 도우미" },
+  description: "교사 요구조건·교육과정·루브릭을 먼저 분석하고 전략, 초안, 검증 근거를 함께 제공하는 수행평가 AI 앱",
   applicationName: "수행평가 도우미",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
   },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "수행평가 도우미",
-  },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "수행평가 도우미" },
 };
 
 export const viewport: Viewport = {
@@ -48,31 +42,33 @@ const preferenceBootScript = `(()=>{try{const d=document.documentElement;const g
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const cookieStore = await cookies();
   const signedIn = Boolean(cookieStore.get(ACCESS_COOKIE)?.value);
-  const isAdmin = signedIn ? Boolean(await getAdminContext().catch(() => null)) : false;
+  const authenticatedUser = signedIn ? await getAuthenticatedUser().catch(() => null) : null;
+  const isAdmin = authenticatedUser ? Boolean(await getAdminContext().catch(() => null)) : false;
   let dataScope = "signed-out";
 
-  if (signedIn) {
+  if (authenticatedUser) {
     const cachedScope = cookieStore.get(SCHOOL_SCOPE_COOKIE)?.value;
-    if (cachedScope) {
-      dataScope = cachedScope;
-    } else {
+    if (cachedScope) dataScope = cachedScope;
+    else {
       const profile = await getCurrentUserProfile();
-      dataScope = `${profile?.user_id ?? "signed-in"}:${profile?.school_key || "unassigned"}`;
+      dataScope = `${profile?.user_id ?? authenticatedUser.id}:${profile?.school_key || "unassigned"}`;
     }
   }
 
   return (
     <html lang="ko" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: preferenceBootScript }} /></head>
-      <body>
+      <body data-local-owner-id={authenticatedUser?.id ?? ""}>
         <ServiceWorkerRegister />
-        <PreferenceRuntime />
-        <SchoolDataScopeGuard scope={dataScope} />
-        <AiRequestProgress />
-        <CalendarReminders />
-        <AppShell isAdmin={isAdmin} signedIn={signedIn}>{children}</AppShell>
-        <AiStageActions />
-        <AiAssistant />
+        <LocalDataBoundary ownerId={authenticatedUser?.id ?? null}>
+          <PreferenceRuntime />
+          <SchoolDataScopeGuard scope={dataScope} />
+          <AiRequestProgress />
+          <CalendarReminders />
+          <AppShell isAdmin={isAdmin} signedIn={Boolean(authenticatedUser)}>{children}</AppShell>
+          <AiStageActions />
+          <AiAssistant />
+        </LocalDataBoundary>
       </body>
     </html>
   );
