@@ -9,6 +9,9 @@ const DIRECT_UPLOAD_BYTES = 4 * 1024 * 1024;
 const MAX_PAGES = 6;
 const CLIENT_RENDER_LONG_EDGE = 1_400;
 const CLIENT_JPEG_QUALITY = 0.68;
+const PHOTO_RENDER_LONG_EDGE = 1_800;
+const PHOTO_JPEG_QUALITY = 0.82;
+const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 type DocumentType = "rubric" | "guide";
 type DocumentMode = DocumentType | "auto";
@@ -39,23 +42,36 @@ export function PdfRubricUpload({
   const [busy, setBusy] = useState(false);
 
   async function upload(file: File) {
+    const pdf = isPdf(file);
+    const image = isSupportedImage(file);
+
+    if (!pdf && !image) {
+      setError("PDF 또는 JPG·PNG·WebP 사진만 업로드할 수 있습니다.");
+      return;
+    }
     if (file.size > MAX_FILE_BYTES) {
-      setError("PDF는 20MB 이하로 올려 주세요.");
+      setError("파일은 20MB 이하로 올려 주세요.");
       return;
     }
 
     setBusy(true);
     setError("");
-    setStatus(file.size > DIRECT_UPLOAD_BYTES ? "PDF를 압축한 뒤 AI가 문서 종류와 내용을 확인하고 있습니다." : "AI가 PDF 종류와 내용을 확인하고 있습니다.");
+    if (pdf) {
+      setStatus(file.size > DIRECT_UPLOAD_BYTES ? "PDF를 압축한 뒤 AI가 문서 종류와 내용을 확인하고 있습니다." : "AI가 PDF 종류와 내용을 확인하고 있습니다.");
+    } else {
+      setStatus("사진을 선명하게 변환한 뒤 AI가 문서 종류와 내용을 확인하고 있습니다.");
+    }
 
     try {
-      const response = file.size > DIRECT_UPLOAD_BYTES
-        ? await uploadCompressedPdf(file, documentMode)
-        : await uploadDirectPdf(file, documentMode);
-      const payload = await readApiResponse<RubricPayload>(response, "PDF를 판독하지 못했습니다.");
+      const response = pdf
+        ? file.size > DIRECT_UPLOAD_BYTES
+          ? await uploadCompressedPdf(file, documentMode)
+          : await uploadDirectPdf(file, documentMode)
+        : await uploadPhoto(file, documentMode);
+      const payload = await readApiResponse<RubricPayload>(response, "문서를 판독하지 못했습니다.");
       const documentText = payload.documentText ?? payload.rubricText;
       if (!response.ok || !documentText || !payload.documentType) {
-        throw new Error(payload.error || "PDF를 판독하지 못했습니다.");
+        throw new Error(payload.error || "문서를 판독하지 못했습니다.");
       }
 
       if (payload.documentType === "guide") {
@@ -76,7 +92,7 @@ export function PdfRubricUpload({
       );
     } catch (caught) {
       setStatus("");
-      setError(caught instanceof Error ? caught.message : "PDF를 판독하지 못했습니다.");
+      setError(caught instanceof Error ? caught.message : "문서를 판독하지 못했습니다.");
     } finally {
       setBusy(false);
     }
@@ -87,12 +103,12 @@ export function PdfRubricUpload({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-black text-slate-900">과제 문서 추가 <span className="font-semibold text-slate-400">(선택)</span></p>
-          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내문 PDF를 올리면 AI가 종류를 판별해 알맞은 칸에 반영합니다. 최대 6페이지 · 20MB</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">평가기준표나 수행평가 안내문을 PDF 또는 사진으로 올리면 AI가 종류를 판별해 알맞은 칸에 반영합니다. PDF 최대 6페이지 · 파일당 20MB</p>
         </div>
         <label className={`inline-flex min-h-11 shrink-0 items-center rounded-xl bg-violet-600 px-4 text-sm font-black text-white ${disabled || busy ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
-          {busy ? "판독 중..." : status ? "다른 문서 추가" : "PDF 추가"}
+          {busy ? "판독 중..." : status ? "다른 문서 추가" : "PDF / 사진 추가"}
           <input
-            accept="application/pdf,.pdf"
+            accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp"
             className="sr-only"
             disabled={disabled || busy}
             onChange={(event) => {
@@ -110,6 +126,15 @@ export function PdfRubricUpload({
   );
 }
 
+function isPdf(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+function isSupportedImage(file: File) {
+  const name = file.name.toLowerCase();
+  return SUPPORTED_IMAGE_TYPES.has(file.type) || /\.(jpe?g|png|webp)$/.test(name);
+}
+
 async function uploadDirectPdf(file: File, documentType: DocumentMode) {
   const formData = new FormData();
   formData.set("file", file);
@@ -119,11 +144,41 @@ async function uploadDirectPdf(file: File, documentType: DocumentMode) {
 
 async function uploadCompressedPdf(file: File, documentType: DocumentMode) {
   const pageImages = await renderPdfForUpload(file);
+  return uploadPageImages(file.name, pageImages, documentType);
+}
+
+async function uploadPhoto(file: File, documentType: DocumentMode) {
+  const pageImage = await renderPhotoForUpload(file);
+  return uploadPageImages(file.name, [pageImage], documentType);
+}
+
+async function uploadPageImages(fileName: string, pageImages: string[], documentType: DocumentMode) {
   return fetch("/api/assignment/extract-rubric", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileName: file.name, pageImages, documentType }),
+    body: JSON.stringify({ fileName, pageImages, documentType }),
   });
+}
+
+async function renderPhotoForUpload(file: File) {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  try {
+    if (bitmap.width < 1 || bitmap.height < 1) throw new Error("사진 크기를 확인할 수 없습니다.");
+    const scale = Math.min(1, PHOTO_RENDER_LONG_EDGE / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = window.document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw new Error("사진을 변환할 수 없습니다.");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(bitmap, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", PHOTO_JPEG_QUALITY);
+  } finally {
+    bitmap.close();
+  }
 }
 
 async function renderPdfForUpload(file: File) {
