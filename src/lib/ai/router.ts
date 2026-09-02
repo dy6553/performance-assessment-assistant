@@ -434,13 +434,31 @@ async function getAvailableApprovedModels(
 ): Promise<AvailabilityCache> {
   if (availabilityCache && availabilityCache.expiresAt > now) return availabilityCache;
 
-  availabilityCache = {
-    ids: new Set(registry.map((model) => model.id)),
-    expiresAt: now + 60 * 60 * 1_000,
-    live: false,
-    catalogSynced: false,
-  };
+  try {
+    const catalog = await refreshModelCatalog();
+    availabilityCache = {
+      ids: new Set(catalog.catalogIds),
+      expiresAt: now + 5 * 60 * 1_000,
+      live: true,
+      catalogSynced: catalog.synced,
+    };
+  } catch (error) {
+    console.warn("NVIDIA 실시간 모델 카탈로그 확인 실패", {
+      errorCode: safeServiceErrorCode(error),
+    });
+    availabilityCache = {
+      ids: new Set(registry.map((model) => model.id)),
+      expiresAt: now + 60 * 1_000,
+      live: false,
+      catalogSynced: false,
+    };
+  }
   return availabilityCache;
+}
+
+function safeServiceErrorCode(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  return message.match(/(?:NVIDIA|SUPABASE)_\d{3}/i)?.[0]?.toUpperCase() ?? "UNKNOWN";
 }
 
 async function syncCatalogCandidates(

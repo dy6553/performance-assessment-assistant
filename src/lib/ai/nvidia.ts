@@ -197,6 +197,12 @@ async function requestCompletion({
 
   if (!response.ok) {
     const safeCode = `NVIDIA_${response.status}`;
+    console.warn("NVIDIA AI 호출 실패", {
+      taskName,
+      model,
+      status: response.status,
+      errorCode: safeCode,
+    });
     throw new Error(`${taskName} AI 호출에 실패했습니다. (${safeCode})`);
   }
 

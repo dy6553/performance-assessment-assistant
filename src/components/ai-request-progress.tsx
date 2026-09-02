@@ -231,7 +231,7 @@ export function AiRequestProgress() {
         }, 5_000);
 
         if (error instanceof TypeError) {
-          throw new Error("서버와 연결이 끊겼습니다. 잠시 후 다시 시도해 주세요. 계속 실패하면 페이지를 새로고침한 뒤 다시 실행해 주세요.");
+          throw new Error("AI 요청을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요. 계속 실패하면 페이지를 새로고침한 뒤 다시 실행해 주세요.");
         }
         throw error;
       }
