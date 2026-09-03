@@ -9,7 +9,7 @@ import type {
   UserRole,
 } from "../types";
 
-const GPT_ADMIN_INTERNAL_EMAIL = "dev.i123@performance-assessment.test.invalid";
+const GPT_ADMIN_INTERNAL_EMAIL = "dev.gpt-admin@performance-assessment.test.invalid";
 
 type ProfileRow = {
   user_id: string;
