@@ -115,7 +115,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 function dataUrlToBlob(value: string, fallbackType: string) {
-  const match = /^data:([^;,]*)(;base64)?,(.*)$/s.exec(value);
+  const match = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(value);
   if (!match) throw new Error("INVALID_FILE_DATA");
   const mime = match[1] || fallbackType;
   const body = match[3] ?? "";
