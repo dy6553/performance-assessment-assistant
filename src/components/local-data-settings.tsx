@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-import { buildLocalBackup, deleteAllLocalDataForOwner, restoreLocalBackup } from "@/lib/local-data/backup";
 import { listAssignmentProjects } from "@/lib/local-data/assignments";
+import { buildLocalBackup, deleteAllLocalDataForOwner, restoreLocalBackup } from "@/lib/local-data/backup";
+import { listLocalCalendars } from "@/lib/local-data/calendar";
+import { listProjectChats } from "@/lib/local-data/chats";
 import { listLocalFiles } from "@/lib/local-data/files";
 import { getConfiguredOwnerId } from "@/lib/local-data/owner";
 
@@ -12,6 +14,8 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
   const [quota, setQuota] = useState<number | null>(null);
   const [persistent, setPersistent] = useState<boolean | null>(null);
   const [projects, setProjects] = useState(0);
+  const [chats, setChats] = useState(0);
+  const [calendarEvents, setCalendarEvents] = useState(0);
   const [files, setFiles] = useState(0);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,18 +25,25 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
 
   async function refresh() {
     const ownerId = getConfiguredOwnerId();
-    if (!ownerId) return;
+    if (!ownerId) {
+      setMessage("로그인하면 현재 계정의 이 기기 저장 데이터를 관리할 수 있습니다.");
+      return;
+    }
     try {
-      const [estimate, isPersistent, assignmentRows, fileRows] = await Promise.all([
+      const [estimate, isPersistent, assignmentRows, chatRows, calendarRows, fileRows] = await Promise.all([
         navigator.storage?.estimate?.() ?? Promise.resolve({ usage: undefined, quota: undefined }),
         navigator.storage?.persisted?.() ?? Promise.resolve(null),
         listAssignmentProjects(ownerId),
+        listProjectChats(ownerId),
+        listLocalCalendars(ownerId),
         listLocalFiles(ownerId),
       ]);
       setUsage(estimate.usage ?? 0);
       setQuota(estimate.quota ?? 0);
       setPersistent(isPersistent);
       setProjects(assignmentRows.length);
+      setChats(chatRows.length);
+      setCalendarEvents(calendarRows.reduce((sum, row) => sum + row.events.length, 0));
       setFiles(fileRows.length);
     } catch {
       setMessage("기기 저장공간 상태를 확인하지 못했습니다.");
@@ -59,7 +70,7 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = `teston-backup-${localDateToken()}.json`;
+      anchor.download = `assessment-helper-device-backup-${localDateToken()}.json`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -108,6 +119,8 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
         "assessment-ai-chat-v1",
       ]) window.sessionStorage.removeItem(key);
       setProjects(0);
+      setChats(0);
+      setCalendarEvents(0);
       setFiles(0);
       setConfirmDelete(false);
       setMessage("현재 계정의 이 기기 개인 작업 데이터를 삭제했습니다.");
@@ -135,13 +148,13 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
 
   if (mode === "backup") {
     return (
-      <div className="space-y-4">
-        <Panel title="이 기기의 개인 데이터 백업" description="수행평가 프로젝트, 초안·완성본, AI 대화, 캘린더와 로컬 업로드 원본을 JSON 백업 파일로 내보냅니다. 다른 계정 데이터는 포함하지 않습니다.">
-          <button className={primaryButton} disabled={busy} onClick={() => void exportBackup()} type="button">백업 파일 내보내기</button>
+      <div className="mb-6 space-y-4">
+        <Panel title="이 기기의 개인 작업 데이터 백업" description="현재 로그인 계정의 수행평가 프로젝트, 초안·완성본, AI 대화, 캘린더와 로컬 업로드 원본을 JSON 백업 파일로 내보냅니다. 다른 계정 데이터는 포함하지 않습니다.">
+          <button className={primaryButton} disabled={busy} onClick={() => void exportBackup()} type="button">기기 데이터 백업 파일 내보내기</button>
         </Panel>
-        <Panel title="백업 복원" description="이 앱에서 만든 백업 파일을 현재 로그인 계정의 로컬 저장공간으로 복원합니다.">
+        <Panel title="기기 데이터 백업 복원" description="수행평가 도우미에서 만든 기기 데이터 백업 파일을 현재 로그인 계정의 로컬 저장공간으로 복원합니다.">
           <label className={`${secondaryButton} cursor-pointer`}>
-            백업 파일 불러오기
+            기기 데이터 백업 불러오기
             <input accept="application/json,.json" className="sr-only" disabled={busy} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void importBackup(file); }} type="file" />
           </label>
         </Panel>
@@ -151,13 +164,16 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
   }
 
   return (
-    <div className="space-y-4">
-      <Panel title="개인 데이터 저장" description="수행평가 작성 내용과 AI 작업 기록은 기본적으로 이 기기의 IndexedDB에 저장됩니다. 업로드 원본은 OPFS를 우선 사용하고 지원하지 않는 환경에서는 IndexedDB Blob으로 보관합니다.">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Stat label="로컬 프로젝트" value={`${projects}개`} />
-          <Stat label="로컬 업로드 파일" value={`${files}개`} />
-          <Stat label="사용 중" value={usage === null ? "확인 불가" : formatBytes(usage)} />
+    <div className="mb-6 space-y-4">
+      <Panel title="현재 계정의 이 기기 저장 데이터" description="수행평가 작성 내용과 AI 작업 기록은 이 기기의 IndexedDB에 저장됩니다. 업로드 원본은 OPFS를 우선 사용하고 지원하지 않는 환경에서는 IndexedDB Blob으로 보관합니다.">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label="수행평가 프로젝트" value={`${projects}개`} />
+          <Stat label="AI 대화" value={`${chats}개`} />
+          <Stat label="캘린더 일정" value={`${calendarEvents}개`} />
+          <Stat label="업로드 원본" value={`${files}개`} />
+          <Stat label="브라우저 사용량" value={usage === null ? "확인 불가" : formatBytes(usage)} />
           <Stat label="브라우저 할당량" value={quota === null ? "확인 불가" : formatBytes(quota)} />
+          <Stat label="저장 보호" value={persistent === null ? "확인 불가" : persistent ? "영구 저장" : "브라우저 정책 적용"} />
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <button className={secondaryButton} onClick={() => void refresh()} type="button">저장공간 새로고침</button>
