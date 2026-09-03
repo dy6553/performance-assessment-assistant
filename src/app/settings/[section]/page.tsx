@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { LocalDataSettings } from "@/components/local-data-settings";
 import { SettingsPreferences, type SettingsSection } from "@/components/settings-preferences";
 import { PageHeader } from "@/components/ui";
 import packageJson from "../../../../package.json";
@@ -36,11 +37,11 @@ const SECTION_META: Record<SettingsSection, { title: string; description: string
   },
   storage: {
     title: "저장공간 및 데이터",
-    description: "브라우저 캐시와 현재 작업 데이터를 확인하고 자동·수동 정리 기능을 관리합니다.",
+    description: "이 기기에 저장된 수행평가 프로젝트·AI 대화·캘린더·업로드 원본의 상태를 확인하고 저장 보호, 자동 정리 또는 삭제를 관리합니다.",
   },
   backup: {
-    title: "설정 백업 및 복원",
-    description: "주요 앱 설정을 JSON 파일로 내보내거나 다른 기기에서 다시 불러옵니다.",
+    title: "백업 및 복원",
+    description: "이 기기의 수행평가 작업 데이터와 주요 앱 설정을 각각 백업하거나 다시 불러옵니다.",
   },
   about: {
     title: "앱 정보",
@@ -107,6 +108,9 @@ export default async function SettingsSectionPage({
       </div>
 
       <PageHeader description={meta.description} eyebrow="앱 설정" title={meta.title} />
+
+      {section === "storage" ? <LocalDataSettings mode="storage" /> : null}
+      {section === "backup" ? <LocalDataSettings mode="backup" /> : null}
 
       <SettingsPreferences
         appVersion={packageJson.version}
