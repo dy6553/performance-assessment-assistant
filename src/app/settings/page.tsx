@@ -41,12 +41,12 @@ const CATEGORIES = [
   {
     href: "/settings/storage",
     title: "저장공간 및 데이터",
-    description: "캐시, 임시 작업 데이터, 자동 정리 기능을 관리합니다.",
+    description: "이 기기의 수행평가·AI 대화·캘린더·업로드 파일 용량, 저장 보호와 삭제를 관리합니다.",
   },
   {
     href: "/settings/backup",
-    title: "설정 백업 및 복원",
-    description: "이 기기의 주요 앱 설정을 파일로 내보내거나 다시 불러옵니다.",
+    title: "백업 및 복원",
+    description: "수행평가 작업 데이터와 앱 설정을 파일로 백업하거나 현재 계정에 복원합니다.",
   },
   {
     href: "/settings/about",
@@ -69,7 +69,7 @@ export default function SettingsPage() {
   return (
     <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
       <PageHeader
-        description="카테고리를 누르면 해당 설정 화면으로 이동합니다. 주요 설정은 현재 기기에 저장됩니다."
+        description="카테고리를 누르면 해당 설정 화면으로 이동합니다. 주요 설정과 개인 작업 데이터는 현재 기기에서 관리할 수 있습니다."
         eyebrow="앱 설정"
         title="설정"
       />
