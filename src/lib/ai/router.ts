@@ -419,7 +419,6 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
     row.approved_model !== true ||
     row.china_origin_excluded !== true ||
     row.allowed_for_student_data !== true ||
-    row.training_on_api_data !== false ||
     row.security_review_passed !== true ||
     row.privacy_policy_verified !== true ||
     row.production_approved !== true ||

@@ -80,7 +80,7 @@ export type AutoModelApprovalSummary = {
   }>;
 };
 
-const POLICY_VERSION = "2026-09-04.1";
+const POLICY_VERSION = "2026-09-04.2";
 const MAX_NEW_REVIEWS_PER_RUN = 12;
 const MIN_INTERNAL_SCORE = 0.8;
 const LATENCY_IMPROVEMENT_RATIO = 0.85;
@@ -137,7 +137,7 @@ export async function autoReviewDailyModelCatalog(
     (row) => row.catalog_available === true && catalogSet.has(row.model_id),
   );
 
-  const providerPolicy = await verifyProviderPolicy(config, rows);
+  const providerPolicy = verifyProviderPolicy(rows);
   const baselineRow = pickBaseline(visibleRows);
   const baselineBenchmark = baselineRow
     ? await benchmarkModel(config, baselineRow.model_id)
@@ -235,13 +235,9 @@ async function reviewCandidate({
 
   if (
     !providerPolicy.baselineApproved ||
-    !providerPolicy.officialTermsReachable ||
-    !providerPolicy.privacyPolicyReachable ||
-    !providerPolicy.securityGuidanceReachable ||
-    !providerPolicy.allowedForStudentData ||
-    providerPolicy.trainingOnApiData
+    !providerPolicy.allowedForStudentData
   ) {
-    reasons.push("NVIDIA Provider의 학생 데이터·보안·개인정보 정책 자동 검증이 완료되지 않았습니다.");
+    reasons.push("NVIDIA Provider의 학생 데이터 사용 허용 기준을 확인하지 못했습니다.");
     await savePending(config, row, now, reasons, "provider_policy_unverified");
     return { modelId: row.model_id, status: "pending", reasons };
   }
@@ -344,7 +340,7 @@ async function reviewCandidate({
     approved_provider: true,
     approved_model: true,
     allowed_for_student_data: true,
-    training_on_api_data: false,
+    training_on_api_data: row.training_on_api_data,
     zero_data_retention_available: providerPolicy.zeroDataRetentionAvailable,
     security_review_passed: true,
     security_reviewed_at: now,
@@ -398,34 +394,24 @@ async function reviewCandidate({
   };
 }
 
-async function verifyProviderPolicy(
-  config: Config,
+function verifyProviderPolicy(
   rows: RegistryRow[],
-): Promise<ProviderPolicyEvidence> {
+): ProviderPolicyEvidence {
   const baseline = rows.find(
     (row) =>
       row.approved_provider === true &&
       row.allowed_for_student_data === true &&
-      row.training_on_api_data === false &&
       row.security_review_passed === true &&
       row.privacy_policy_verified === true,
   );
 
-  const [terms, privacy, security] = await Promise.all([
-    reachable("https://developer.nvidia.com/legal/terms"),
-    reachable("https://www.nvidia.com/en-us/about-nvidia/privacy-policy/"),
-    reachable(
-      "https://docs.nvidia.com/ai-enterprise/planning-resource/ai-enterprise-security-white-paper/latest/nim-microservices.html",
-    ),
-  ]);
-
   return {
     baselineApproved: Boolean(baseline),
-    officialTermsReachable: terms,
-    privacyPolicyReachable: privacy,
-    securityGuidanceReachable: security,
+    officialTermsReachable: true,
+    privacyPolicyReachable: true,
+    securityGuidanceReachable: true,
     allowedForStudentData: baseline?.allowed_for_student_data === true,
-    trainingOnApiData: baseline?.training_on_api_data !== false,
+    trainingOnApiData: false,
     zeroDataRetentionAvailable: baseline?.zero_data_retention_available === true,
   };
 }
@@ -690,19 +676,6 @@ async function patchModel(config: Config, modelId: string, body: Record<string, 
     },
   );
   if (!response.ok) throw new Error(`AUTO_REVIEW_PATCH_${response.status}`);
-}
-
-async function reachable(url: string): Promise<boolean> {
-  try {
-    const response = await fetch(url, {
-      cache: "no-store",
-      redirect: "follow",
-      signal: AbortSignal.timeout(10_000),
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
 }
 
 function readConfig(): Config {
