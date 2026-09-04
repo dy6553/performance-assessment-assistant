@@ -1,10 +1,10 @@
-import { AssessmentWizard } from "@/features/assessment/assessment-wizard";
 import { DraftRevisionEditor } from "@/features/assessment/draft-revision-editor";
+import { EnhancedAssessmentWorkspace } from "@/features/assessment/enhanced-workspace";
 
 export default function AssignmentWorkspacePage() {
   return (
     <>
-      <AssessmentWizard screen="workspace" />
+      <EnhancedAssessmentWorkspace />
       <DraftRevisionEditor />
     </>
   );
