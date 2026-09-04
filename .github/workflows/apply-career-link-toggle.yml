@@ -1,0 +1,170 @@
+name: Apply per-assignment career link toggle
+
+on:
+  push:
+    branches:
+      - feat/career-link-per-assignment-20260904
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply focused source changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}: {old[:80]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          # Request / persisted assignment contract: explicit O/X override, nullable for legacy sessions.
+          replace_once(
+              "src/features/assessment/schemas.ts",
+              '    assignmentType: z.string().trim().max(120).default("자동 분석"),\n    topic: z.string().trim().min(2).max(500),',
+              '    assignmentType: z.string().trim().max(120).default("자동 분석"),\n    careerLinked: z.boolean().nullable().optional(),\n    topic: z.string().trim().min(2).max(500),',
+          )
+          replace_once(
+              "src/features/assessment/schemas.ts",
+              '    assignmentType: z.string().trim().min(1).max(120),\n    teacherInstruction: z.string().trim().max(20_000).default(""),',
+              '    assignmentType: z.string().trim().min(1).max(120),\n    careerLinked: z.boolean().nullable().optional(),\n    teacherInstruction: z.string().trim().max(20_000).default(""),',
+          )
+          replace_once(
+              "src/features/assessment/assessment-flow.ts",
+              'assignmentType: "자동 분석", topic: "",',
+              'assignmentType: "자동 분석", careerLinked: null, topic: "",',
+          )
+
+          # Per-assignment selection wins over the account-level default. Undefined/null preserves legacy behavior.
+          replace_once(
+              "src/features/assessment/server/career-context.ts",
+              '''export async function getCareerAiContext(): Promise<CareerAiContext | null> {\n  const profile = await getCurrentUserProfile();\n  if (!profile?.career_use_default) return null;''',
+              '''export async function getCareerAiContext(careerLinked?: boolean | null): Promise<CareerAiContext | null> {\n  const profile = await getCurrentUserProfile();\n  if (!profile) return null;\n\n  const shouldUseCareer = careerLinked ?? profile.career_use_default;\n  if (!shouldUseCareer) return null;''',
+          )
+
+          # Every assignment AI endpoint must honor the same override.
+          endpoint_replacements = {
+              "src/app/api/assignment/recommend-topic/route.ts": (
+                  "const career = await getCareerAiContext();",
+                  "const career = await getCareerAiContext(parsed.data.careerLinked);",
+              ),
+              "src/app/api/assignment/analyze/route.ts": (
+                  "const career = await getCareerAiContext();",
+                  "const career = await getCareerAiContext(parsed.data.assignment.careerLinked);",
+              ),
+              "src/app/api/assignment/generate/route.ts": (
+                  "const career = await getCareerAiContext();",
+                  "const career = await getCareerAiContext(parsed.data.assignment.careerLinked);",
+              ),
+              "src/app/api/assignment/verify/route.ts": (
+                  "const career = await getCareerAiContext();",
+                  "const career = await getCareerAiContext(parsed.data.assignment.careerLinked);",
+              ),
+              "src/app/api/assignment/revise-draft/route.ts": (
+                  "const career = await getCareerAiContext();",
+                  "const career = await getCareerAiContext(parsed.data.assignment.careerLinked);",
+              ),
+              "src/app/api/assignment/assistant/route.ts": (
+                  "const career = await getCareerAiContext();",
+                  "const career = await getCareerAiContext(input.assignment?.careerLinked);",
+              ),
+          }
+          for path, (old, new) in endpoint_replacements.items():
+              replace_once(path, old, new)
+
+          # Shared, accessible O/X control used by both setup implementations.
+          selector = '''"use client";\n\nimport type { AssignmentInput } from "./schemas";\n\nexport function CareerLinkSelector({\n  value,\n  onChange,\n  disabled = false,\n}: {\n  value: AssignmentInput["careerLinked"];\n  onChange: (value: boolean) => void;\n  disabled?: boolean;\n}) {\n  return (\n    <section className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 sm:p-5" aria-labelledby="career-link-title">\n      <div>\n        <p id="career-link-title" className="text-sm font-black text-slate-900">진로 연계</p>\n        <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">\n          내 계정에 저장한 진로 정보를 이 수행평가의 주제 추천·분석·작성·수정·검증·AI Chat에 참고할지 선택하세요.\n        </p>\n      </div>\n\n      <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="진로 연계 O X 선택">\n        <button\n          type="button"\n          aria-pressed={value === true}\n          disabled={disabled}\n          onClick={() => onChange(true)}\n          className={`min-h-16 rounded-2xl border px-3 py-3 text-center transition disabled:cursor-not-allowed disabled:opacity-60 ${\n            value === true\n              ? "border-violet-600 bg-violet-600 text-white shadow-sm"\n              : "border-slate-200 bg-white text-slate-700 hover:border-violet-300"\n          }`}\n        >\n          <span className="block text-xl font-black leading-none">O</span>\n          <span className="mt-1 block text-xs font-black">진로 연계</span>\n        </button>\n        <button\n          type="button"\n          aria-pressed={value === false}\n          disabled={disabled}\n          onClick={() => onChange(false)}\n          className={`min-h-16 rounded-2xl border px-3 py-3 text-center transition disabled:cursor-not-allowed disabled:opacity-60 ${\n            value === false\n              ? "border-slate-900 bg-slate-900 text-white shadow-sm"\n              : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"\n          }`}\n        >\n          <span className="block text-xl font-black leading-none">X</span>\n          <span className="mt-1 block text-xs font-black">연계 안 함</span>\n        </button>\n      </div>\n\n      <p className="mt-3 text-[11px] font-semibold leading-5 text-slate-500">\n        O를 선택해도 교사 안내·루브릭·교과 적합성이 항상 우선이며, 자연스럽게 연결될 때만 진로 정보를 사용합니다.\n      </p>\n    </section>\n  );\n}\n'''
+          Path("src/features/assessment/career-link-selector.tsx").write_text(selector)
+
+          # Current compact setup route.
+          replace_once(
+              "src/features/assessment/compact-assignment-setup.tsx",
+              'import { PdfRubricUpload } from "./pdf-rubric-upload";\nimport type { AssignmentInput } from "./schemas";',
+              'import { CareerLinkSelector } from "./career-link-selector";\nimport { PdfRubricUpload } from "./pdf-rubric-upload";\nimport type { AssignmentInput } from "./schemas";',
+          )
+          replace_once(
+              "src/features/assessment/compact-assignment-setup.tsx",
+              '''    if (!assignment.course.trim()) {\n      setError("세부단원을 입력해 주세요.");\n      return;\n    }\n    if (!assignment.formatRule.trim()) {''',
+              '''    if (!assignment.course.trim()) {\n      setError("세부단원을 입력해 주세요.");\n      return;\n    }\n    if (assignment.careerLinked == null) {\n      setError("진로 연계 O 또는 X를 선택해 주세요.");\n      return;\n    }\n    if (!assignment.formatRule.trim()) {''',
+          )
+          replace_once(
+              "src/features/assessment/compact-assignment-setup.tsx",
+              '''          </Field>\n\n          <div className="grid gap-4 sm:grid-cols-2">\n            <Field label="제출 형식" required>''',
+              '''          </Field>\n\n          <CareerLinkSelector\n            value={assignment.careerLinked}\n            onChange={(value) => update("careerLinked", value)}\n          />\n\n          <div className="grid gap-4 sm:grid-cols-2">\n            <Field label="제출 형식" required>''',
+          )
+
+          # Legacy/shared wizard still powers topic/review/workspace, so its topic request must carry the override too.
+          replace_once(
+              "src/features/assessment/assessment-wizard.tsx",
+              'import { PdfRubricUpload } from "./pdf-rubric-upload";\nimport type {',
+              'import { CareerLinkSelector } from "./career-link-selector";\nimport { PdfRubricUpload } from "./pdf-rubric-upload";\nimport type {',
+          )
+          replace_once(
+              "src/features/assessment/assessment-wizard.tsx",
+              '  "assignmentType",\n  "teacherInstruction",',
+              '  "assignmentType",\n  "careerLinked",\n  "teacherInstruction",',
+          )
+          replace_once(
+              "src/features/assessment/assessment-wizard.tsx",
+              '''    if (!assignment.subject.trim()) {\n      setError("과목 및 단원을 입력해 주세요.");\n      return;\n    }\n    if (assignment.teacherInstruction.trim().length < 2 && assignment.rubricText.trim().length < 2) {''',
+              '''    if (!assignment.subject.trim()) {\n      setError("과목 및 단원을 입력해 주세요.");\n      return;\n    }\n    if (assignment.careerLinked == null) {\n      setError("진로 연계 O 또는 X를 선택해 주세요.");\n      return;\n    }\n    if (assignment.teacherInstruction.trim().length < 2 && assignment.rubricText.trim().length < 2) {''',
+          )
+          replace_once(
+              "src/features/assessment/assessment-wizard.tsx",
+              '''          assignmentType: assignment.assignmentType,\n          teacherInstruction: assignment.teacherInstruction,''',
+              '''          assignmentType: assignment.assignmentType,\n          careerLinked: assignment.careerLinked,\n          teacherInstruction: assignment.teacherInstruction,''',
+          )
+          replace_once(
+              "src/features/assessment/assessment-wizard.tsx",
+              '''      </div>\n\n      <div className="mt-6 rounded-[1.75rem] border border-violet-100 bg-violet-50/50 p-4 sm:p-5">''',
+              '''      </div>\n\n      <div className="mt-5">\n        <CareerLinkSelector\n          value={assignment.careerLinked}\n          onChange={(value) => onUpdate("careerLinked", value)}\n          disabled={Boolean(loading) || topicLoading}\n        />\n      </div>\n\n      <div className="mt-6 rounded-[1.75rem] border border-violet-100 bg-violet-50/50 p-4 sm:p-5">''',
+          )
+
+          # Keep the repository design document synchronized with behavior.
+          doc = Path("docs/career-profile-personalization.md")
+          doc_text = doc.read_text()
+          marker = "## 수행평가별 진로 연계 O/X"
+          if marker not in doc_text:
+              doc.write_text(doc_text.rstrip() + '''\n\n---\n\n## 수행평가별 진로 연계 O/X\n\n수행평가 정보 입력 화면에는 `O`와 `X` 두 버튼을 둔다. 이 값은 계정 전체 설정이 아니라 현재 수행평가의 선택값이다.\n\n- `O`: 현재 수행평가에서 저장된 진로 프로필을 참고한다. 계정 기본값이 OFF여도 이 수행평가에서는 사용한다.\n- `X`: 현재 수행평가에서는 저장된 진로 프로필을 사용하지 않는다. 계정 기본값이 ON이어도 사용하지 않는다.\n- 값이 없는 기존 수행평가/기존 API 요청: 기존 호환성을 위해 `career_use_default`를 따른다.\n- 이 선택은 `user_profiles`에 새 컬럼을 만들지 않고 수행평가 입력 데이터(`careerLinked`)에 포함한다.\n- 진로 정보 사용 시에도 교사 안내문, 루브릭, 교과 적합성, 학생의 직접 입력이 우선한다.\n''')
+
+          # Focused invariants.
+          required = {
+              "src/features/assessment/schemas.ts": ["careerLinked: z.boolean().nullable().optional()"],
+              "src/features/assessment/server/career-context.ts": ["careerLinked ?? profile.career_use_default"],
+              "src/features/assessment/compact-assignment-setup.tsx": ["진로 연계 O 또는 X를 선택해 주세요.", "<CareerLinkSelector"],
+              "src/features/assessment/assessment-wizard.tsx": ["careerLinked: assignment.careerLinked", "<CareerLinkSelector"],
+          }
+          for path, needles in required.items():
+              text = Path(path).read_text()
+              for needle in needles:
+                  if needle not in text:
+                      raise SystemExit(f"{path}: missing invariant {needle}")
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck and lint
+        run: npm run check
+      - name: Commit verified changes
+        shell: bash
+        run: |
+          rm .github/workflows/apply-career-link-toggle.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: add per-assignment career link O X"
+          git push origin HEAD:feat/career-link-per-assignment-20260904
