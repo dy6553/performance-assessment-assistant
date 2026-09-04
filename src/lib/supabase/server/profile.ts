@@ -10,6 +10,11 @@ export type UserProfile = {
   school_name: string;
   school_key: string;
   age: number | null;
+  career_interest: string;
+  desired_major: string;
+  desired_career: string;
+  career_notes: string;
+  career_use_default: boolean;
   role: "USER" | "ADMIN" | "SUPER_ADMIN";
   account_status: "ACTIVE" | "LIMITED" | "SUSPENDED";
   created_at: string;
@@ -55,7 +60,7 @@ async function profileRequest(path: string, init: RequestInit = {}) {
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   try {
     const response = await profileRequest(
-      "user_profiles?select=user_id,nickname,school_name,school_key,age,role,account_status,created_at,updated_at&limit=1",
+      "user_profiles?select=user_id,nickname,school_name,school_key,age,career_interest,desired_major,desired_career,career_notes,career_use_default,role,account_status,created_at,updated_at&limit=1",
     );
     if (!response.ok) return null;
 
@@ -70,13 +75,23 @@ export async function updateCurrentUserProfile(input: {
   nickname: string;
   schoolName: string;
   age: number;
+  careerInterest: string;
+  desiredMajor: string;
+  desiredCareer: string;
+  careerNotes: string;
+  careerUseDefault: boolean;
 }) {
-  const response = await profileRequest("rpc/set_my_profile", {
+  const response = await profileRequest("rpc/set_my_profile_with_career", {
     method: "POST",
     body: JSON.stringify({
       p_nickname: input.nickname,
       p_school_name: input.schoolName,
       p_age: input.age,
+      p_career_interest: input.careerInterest,
+      p_desired_major: input.desiredMajor,
+      p_desired_career: input.desiredCareer,
+      p_career_notes: input.careerNotes,
+      p_career_use_default: input.careerUseDefault,
     }),
   });
 
