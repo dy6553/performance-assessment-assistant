@@ -5,6 +5,7 @@ import {
   assignmentInputSchema,
   draftResultSchema,
 } from "@/features/assessment/schemas";
+import { applyCareerToAssignment, getCareerAiContext } from "@/features/assessment/server/career-context";
 import { generateStructured } from "@/lib/ai/nvidia";
 import { routeModel } from "@/lib/ai/router";
 import { publicApiError } from "@/lib/http/server-error";
@@ -32,10 +33,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { assignment, analysis, draft, instruction } = parsed.data;
+    const career = await getCareerAiContext();
+    const assignment = applyCareerToAssignment(parsed.data.assignment, career);
+    const { analysis, draft, instruction } = parsed.data;
     const route = await routeModel({
       task: "final_rewriter",
-      inputCharacters: JSON.stringify(parsed.data).length,
+      inputCharacters: JSON.stringify({ assignment, analysis, draft, instruction }).length,
     });
 
     const system = [
@@ -44,6 +47,7 @@ export async function POST(request: Request) {
       "교사 안내문과 실제 루브릭, 앞 단계 작성 전략은 계속 준수한다.",
       "사용자가 직접 고친 내용과 핵심 주장·의도는 수정 요청과 충돌하지 않는 한 보존한다.",
       "분량, 말투, 구조, 난이도, 특정 내용 추가·삭제 같은 사용자의 원하는 조건을 구체적으로 반영한다.",
+      "사용자 프로필의 진로 정보가 입력에 포함되어 있더라도 교사 안내·루브릭·교과 적합성을 우선하고 자연스럽게 연결 가능한 경우에만 참고한다.",
       "확인되지 않은 통계·정책·법·연도·연구 결과를 새로 만들어내지 않는다.",
       "외부 확인이 필요한 내용은 sourceNeeds 또는 uncertainties에 남긴다.",
       "학교 과제로 부적절하거나 위험한 활동을 권하지 않는다.",
