@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import type { AssignmentInput } from "./schemas";
 
 export function CareerLinkSelector({
@@ -11,10 +13,12 @@ export function CareerLinkSelector({
   onChange: (value: boolean) => void;
   disabled?: boolean;
 }) {
+  const titleId = useId();
+
   return (
-    <section className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 sm:p-5" aria-labelledby="career-link-title">
+    <section className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 sm:p-5" aria-labelledby={titleId}>
       <div>
-        <p id="career-link-title" className="text-sm font-black text-slate-900">진로 연계</p>
+        <p id={titleId} className="text-sm font-black text-slate-900">진로 연계</p>
         <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
           내 계정에 저장한 진로 정보를 이 수행평가의 주제 추천·분석·작성·수정·검증·AI Chat에 참고할지 선택하세요.
         </p>
