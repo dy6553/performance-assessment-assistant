@@ -43,12 +43,15 @@ export function AiStageActions() {
   const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
 
   useEffect(() => {
-    setHasDraft(Boolean(readSession<DraftResult>(assessmentDraftStorageKey)));
-    setOpen(false);
-    setInstruction("");
-    setError("");
-    setTopicResult(null);
-    setDraftResult(null);
+    const frame = window.requestAnimationFrame(() => {
+      setHasDraft(Boolean(readSession<DraftResult>(assessmentDraftStorageKey)));
+      setOpen(false);
+      setInstruction("");
+      setError("");
+      setTopicResult(null);
+      setDraftResult(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [pathname]);
 
   if (!stage || (stage === "draft" && !hasDraft)) return null;
@@ -81,6 +84,7 @@ export function AiStageActions() {
             subject: assignment.subject,
             course: assignment.course,
             assignmentType: assignment.assignmentType,
+            careerLinked: assignment.careerLinked,
             teacherInstruction: assignment.teacherInstruction,
             rubricText: assignment.rubricText,
             achievementStandardText: assignment.achievementStandardText,

@@ -11,20 +11,22 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 
 export function LocalDataBoundary({ ownerId, children }: { ownerId: string | null; children: ReactNode }) {
   const pathname = usePathname();
-  const [ready, setReady] = useState(!ownerId);
+  const [readyOwnerId, setReadyOwnerId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const ready = !ownerId || readyOwnerId === ownerId;
 
   useEffect(() => {
     configureLocalOwner(ownerId);
-    if (!ownerId) {
-      setReady(true);
-      return;
-    }
+    if (!ownerId) return;
     let cancelled = false;
-    setReady(false);
     void hydrateAndMigrateLocalData(ownerId)
-      .then(() => { if (!cancelled) setReady(true); })
-      .catch(() => { if (!cancelled) { setReady(true); setSaveState("error"); } });
+      .then(() => { if (!cancelled) setReadyOwnerId(ownerId); })
+      .catch(() => {
+        if (!cancelled) {
+          setReadyOwnerId(ownerId);
+          setSaveState("error");
+        }
+      });
     return () => { cancelled = true; };
   }, [ownerId]);
 

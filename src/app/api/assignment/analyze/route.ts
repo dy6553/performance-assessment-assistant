@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const career = await getCareerAiContext();
+    const career = await getCareerAiContext(parsed.data.assignment.careerLinked);
     const result = await analyzeAssignment(applyCareerToAssignment(parsed.data.assignment, career));
     return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {

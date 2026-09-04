@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const career = await getCareerAiContext();
+    const career = await getCareerAiContext(parsed.data.careerLinked);
     const result = await recommendTopics(applyCareerToTopicRequest(parsed.data, career));
     return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {

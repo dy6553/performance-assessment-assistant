@@ -23,7 +23,7 @@ export type AssignmentTypeSlug = (typeof assignmentTypeOptions)[number]["slug"];
 export type AssignmentTypeValue = (typeof assignmentTypeOptions)[number]["value"];
 
 export const initialAssignment: AssignmentInput = {
-  curriculum: "2022 개정 교육과정", schoolLevel: "고등학교", grade: 1, subject: "통합사회", course: "", assignmentType: "자동 분석", topic: "", teacherInstruction: "", rubricText: "", achievementStandardText: "", requiredElements: "", lengthRule: "", formatRule: "", studentIdeas: "",
+  curriculum: "2022 개정 교육과정", schoolLevel: "고등학교", grade: 1, subject: "통합사회", course: "", assignmentType: "자동 분석", careerLinked: null, topic: "", teacherInstruction: "", rubricText: "", achievementStandardText: "", requiredElements: "", lengthRule: "", formatRule: "", studentIdeas: "",
 };
 
 export function getAssignmentTypeBySlug(slug: string) { return assignmentTypeOptions.find((item) => item.slug === slug) ?? null; }

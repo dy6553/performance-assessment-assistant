@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const career = await getCareerAiContext();
+    const career = await getCareerAiContext(parsed.data.assignment.careerLinked);
     const assignment = applyCareerToAssignment(parsed.data.assignment, career);
     const { analysis, draft, instruction } = parsed.data;
     const route = await routeModel({

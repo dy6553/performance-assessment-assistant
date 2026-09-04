@@ -738,9 +738,9 @@ function publisherOf(modelId: string): string {
   return modelId.split("/")[0]?.trim().toLowerCase() ?? "";
 }
 
-function capabilityRecord(value: unknown): Record<string, any> {
+function capabilityRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, any>)
+    ? (value as Record<string, unknown>)
     : {};
 }
 
