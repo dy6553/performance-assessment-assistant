@@ -1,11 +1,12 @@
-import { AssessmentWizard } from "@/features/assessment/assessment-wizard";
 import { DraftRevisionEditor } from "@/features/assessment/draft-revision-editor";
+import { EnhancedAssessmentWorkspace } from "@/features/assessment/enhanced-workspace";
+import { StageContextBoundary } from "@/features/assessment/stage-context-boundary";
 
 export default function AssignmentWorkspacePage() {
   return (
-    <>
-      <AssessmentWizard screen="workspace" />
+    <StageContextBoundary>
+      <EnhancedAssessmentWorkspace />
       <DraftRevisionEditor />
-    </>
+    </StageContextBoundary>
   );
 }
