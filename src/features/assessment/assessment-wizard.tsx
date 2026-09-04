@@ -17,8 +17,8 @@ import {
   getSetupPath,
   initialAssignment,
 } from "./assessment-flow";
-import { CareerLinkSelector } from "./career-link-selector";
-import { PdfRubricUpload } from "./pdf-rubric-upload";
+import { CareerLinkStatusBadge } from "./career-link-status-badge";
+import { CompactAssignmentSetup } from "./compact-assignment-setup";
 import type {
   AnalysisResult,
   AssignmentInput,
@@ -71,7 +71,6 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
   const [error, setError] = useState("");
 
   const typeMeta = getAssignmentTypeByValue(assignment.assignmentType);
-  const maxGrade = assignment.schoolLevel === "초등학교" ? 6 : 3;
   const draftText = useMemo(
     () => draft?.sections.map((section) => `${section.heading}\n${section.body}`).join("\n\n") ?? "",
     [draft],
@@ -116,43 +115,6 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
     removeStorage(assessmentDraftStorageKey);
     removeStorage(assessmentVerificationStorageKey);
     setError("");
-  }
-
-  function updateSchoolLevel(level: AssignmentInput["schoolLevel"]) {
-    setAssignment((current) => {
-      const next = {
-        ...current,
-        schoolLevel: level,
-        grade: Math.min(current.grade, level === "초등학교" ? 6 : 3),
-      };
-      writeStorage(assessmentFlowStorageKey, next);
-      return next;
-    });
-    setTopicRecommendations([]);
-    setAnalysis(null);
-    setDraft(null);
-    setVerification(null);
-    removeStorage(assessmentAnalysisStorageKey);
-    removeStorage(assessmentDraftStorageKey);
-    removeStorage(assessmentVerificationStorageKey);
-    setError("");
-  }
-
-  function goToTopic() {
-    if (!assignment.subject.trim()) {
-      setError("과목 및 단원을 입력해 주세요.");
-      return;
-    }
-    if (assignment.careerLinked == null) {
-      setError("진로 연계 O 또는 X를 선택해 주세요.");
-      return;
-    }
-    if (assignment.teacherInstruction.trim().length < 2 && assignment.rubricText.trim().length < 2) {
-      setError("과제 안내서·평가기준표 PDF를 올리거나 교사 과제 설명을 입력해 주세요.");
-      return;
-    }
-    writeStorage(assessmentFlowStorageKey, assignment);
-    router.push("/assignment/topic");
   }
 
   function goToReview() {
@@ -313,23 +275,13 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
     );
   }
 
+  if (screen === "setup") {
+    return <CompactAssignmentSetup typeSlug={typeSlug ?? typeMeta.slug} keepType />;
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <FlowHeader screen={screen} assignmentType={typeMeta.shortTitle} />
-
-      {screen === "setup" ? (
-        <SetupScreen
-          assignment={assignment}
-          error={error}
-          loading={loading}
-          maxGrade={maxGrade}
-          onContinue={goToTopic}
-          onSchoolLevelChange={updateSchoolLevel}
-          onUpdate={update}
-          topicLoading={topicLoading}
-          typeSlug={typeMeta.slug}
-        />
-      ) : null}
 
       {screen === "topic" ? (
         <TopicScreen
@@ -372,254 +324,6 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
   );
 }
 
-function SetupScreen({
-  assignment,
-  error,
-  loading,
-  maxGrade,
-  onContinue,
-  onSchoolLevelChange,
-  onUpdate,
-  topicLoading,
-  typeSlug,
-}: {
-  assignment: AssignmentInput;
-  error: string;
-  loading: string;
-  maxGrade: number;
-  onContinue: () => void;
-  onSchoolLevelChange: (level: AssignmentInput["schoolLevel"]) => void;
-  onUpdate: <K extends keyof AssignmentInput>(key: K, value: AssignmentInput[K]) => void;
-  topicLoading: boolean;
-  typeSlug: string;
-}) {
-  const typeMeta = getAssignmentTypeByValue(assignment.assignmentType);
-
-  return (
-    <section className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">과제 정보</p>
-          <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">{typeMeta.title} 정보 입력</h1>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">이 페이지에서는 과제 조건만 입력합니다. 주제는 다음 페이지에서 정합니다.</p>
-        </div>
-        <Link className={smallSecondaryButtonClass} href="/">유형 다시 선택</Link>
-      </div>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="교육과정">
-          <select
-            className={inputClass}
-            value={assignment.curriculum}
-            onChange={(event) => onUpdate("curriculum", event.target.value as AssignmentInput["curriculum"])}
-          >
-            <option value="2022 개정 교육과정">2022 개정 교육과정</option>
-            <option value="2015 개정 교육과정">2015 개정 교육과정</option>
-          </select>
-        </Field>
-        <Field label="학교급">
-          <select
-            className={inputClass}
-            value={assignment.schoolLevel}
-            onChange={(event) => onSchoolLevelChange(event.target.value as AssignmentInput["schoolLevel"])}
-          >
-            <option>초등학교</option>
-            <option>중학교</option>
-            <option>고등학교</option>
-          </select>
-        </Field>
-        <Field label="학년">
-          <select className={inputClass} value={assignment.grade} onChange={(event) => onUpdate("grade", Number(event.target.value))}>
-            {Array.from({ length: maxGrade }, (_, index) => index + 1).map((grade) => (
-              <option key={grade} value={grade}>{grade}학년</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="과목 및 단원">
-          <input className={inputClass} value={assignment.subject} onChange={(event) => onUpdate("subject", event.target.value)} placeholder="예: 통합사회1 / 인간, 사회, 환경과 행복" />
-        </Field>
-      </div>
-
-      <div className="mt-5">
-        <CareerLinkSelector
-          value={assignment.careerLinked}
-          onChange={(value) => onUpdate("careerLinked", value)}
-          disabled={Boolean(loading) || topicLoading}
-        />
-      </div>
-
-      <div className="mt-6 rounded-[1.75rem] border border-violet-100 bg-violet-50/50 p-4 sm:p-5">
-        <p className="text-sm font-black text-violet-900">{typeMeta.title}에 맞는 입력 항목</p>
-        <p className="mt-1 text-xs font-semibold leading-5 text-violet-700">선택한 수행평가 유형에 따라 아래 항목이 달라집니다.</p>
-        <div className="mt-4">
-          <TypeSpecificFields assignment={assignment} onUpdate={onUpdate} typeSlug={typeSlug} />
-        </div>
-      </div>
-
-      <div className="mt-5">
-        <Field label="교사가 제시한 과제 설명">
-          <textarea
-            className={`${inputClass} min-h-40 resize-y`}
-            value={assignment.teacherInstruction}
-            onChange={(event) => onUpdate("teacherInstruction", event.target.value)}
-            placeholder="수행평가 안내문, 선생님이 말한 조건, 제출 방법 등을 가능한 한 그대로 입력하세요."
-          />
-        </Field>
-      </div>
-
-      <div className="mt-5">
-        <PdfRubricUpload disabled={Boolean(loading) || topicLoading} onExtracted={(text) => onUpdate("rubricText", text)} />
-      </div>
-
-      {assignment.rubricText ? (
-        <div className="mt-4">
-          <Field label="평가 기준 / 루브릭">
-            <textarea className={`${inputClass} min-h-32 resize-y`} value={assignment.rubricText} onChange={(event) => onUpdate("rubricText", event.target.value)} />
-          </Field>
-        </div>
-      ) : null}
-
-      <details className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <summary className="cursor-pointer font-black text-slate-800">성취기준 등 추가 정보</summary>
-        <div className="mt-4">
-          <Field label="성취기준">
-            <textarea
-              className={`${inputClass} min-h-28 resize-y`}
-              value={assignment.achievementStandardText}
-              onChange={(event) => onUpdate("achievementStandardText", event.target.value)}
-              placeholder="선생님이 제시한 성취기준이 있다면 입력하세요."
-            />
-          </Field>
-        </div>
-      </details>
-
-      <Feedback error={error} loading={loading} />
-
-      <div className="mt-6 flex justify-end">
-        <button className={primaryButtonClass} onClick={onContinue} type="button">
-          주제 선택으로 다음 →
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function TypeSpecificFields({
-  assignment,
-  onUpdate,
-  typeSlug,
-}: {
-  assignment: AssignmentInput;
-  onUpdate: <K extends keyof AssignmentInput>(key: K, value: AssignmentInput[K]) => void;
-  typeSlug: string;
-}) {
-  if (typeSlug === "report") {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="보고서 유형">
-          <select className={inputClass} value={assignment.formatRule} onChange={(event) => onUpdate("formatRule", event.target.value)}>
-            <option value="">선택 안 함</option>
-            <option value="탐구보고서">탐구보고서</option>
-            <option value="조사보고서">조사보고서</option>
-            <option value="논술형 보고서">논술형 보고서</option>
-          </select>
-        </Field>
-        <Field label="단원 / 탐구 범위">
-          <input className={inputClass} value={assignment.course} onChange={(event) => onUpdate("course", event.target.value)} placeholder="예: 통합사회 3단원" />
-        </Field>
-        <Field label="분량 조건">
-          <input className={inputClass} value={assignment.lengthRule} onChange={(event) => onUpdate("lengthRule", event.target.value)} placeholder="예: A4 3쪽, 1500~2000자" />
-        </Field>
-        <Field label="필수 조사 내용 / 포함 요소">
-          <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.requiredElements} onChange={(event) => onUpdate("requiredElements", event.target.value)} placeholder="예: 원인·현황·사례·해결 방안·출처 3개 이상" />
-        </Field>
-        <div className="sm:col-span-2">
-          <Field label="현재 생각 / 조사 방향">
-            <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.studentIdeas} onChange={(event) => onUpdate("studentIdeas", event.target.value)} placeholder="이미 떠올린 주장이나 조사하고 싶은 방향이 있다면 적어 주세요." />
-          </Field>
-        </div>
-      </div>
-    );
-  }
-
-  if (typeSlug === "presentation") {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="발표·토론 형태">
-          <select className={inputClass} value={assignment.formatRule} onChange={(event) => onUpdate("formatRule", event.target.value)}>
-            <option value="">선택 안 함</option>
-            <option value="개인 발표">개인 발표</option>
-            <option value="모둠 발표">모둠 발표</option>
-            <option value="토론">토론</option>
-            <option value="발표 후 질의응답">발표 후 질의응답</option>
-          </select>
-        </Field>
-        <Field label="단원 / 발표 범위">
-          <input className={inputClass} value={assignment.course} onChange={(event) => onUpdate("course", event.target.value)} placeholder="예: 한국사 개항기" />
-        </Field>
-        <Field label="발표 시간 / 분량">
-          <input className={inputClass} value={assignment.lengthRule} onChange={(event) => onUpdate("lengthRule", event.target.value)} placeholder="예: 5분 발표, 슬라이드 8장 이내" />
-        </Field>
-        <Field label="필수 포함 내용">
-          <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.requiredElements} onChange={(event) => onUpdate("requiredElements", event.target.value)} placeholder="예: 주장 1개, 근거 3개, 반론 예상, 시각 자료" />
-        </Field>
-        <div className="sm:col-span-2">
-          <Field label="내 주장 / 핵심 메시지">
-            <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.studentIdeas} onChange={(event) => onUpdate("studentIdeas", event.target.value)} placeholder="발표나 토론에서 전달하고 싶은 핵심 생각이 있다면 적어 주세요." />
-          </Field>
-        </div>
-      </div>
-    );
-  }
-
-  if (typeSlug === "experiment") {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="결과 제출 형태">
-          <select className={inputClass} value={assignment.formatRule} onChange={(event) => onUpdate("formatRule", event.target.value)}>
-            <option value="">선택 안 함</option>
-            <option value="실험 보고서">실험 보고서</option>
-            <option value="탐구 보고서">탐구 보고서</option>
-            <option value="관찰 기록">관찰 기록</option>
-            <option value="실험 발표">실험 발표</option>
-          </select>
-        </Field>
-        <Field label="단원 / 탐구 범위">
-          <input className={inputClass} value={assignment.course} onChange={(event) => onUpdate("course", event.target.value)} placeholder="예: 화학 반응과 에너지" />
-        </Field>
-        <Field label="실험 조건·변인·필수 요소">
-          <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.requiredElements} onChange={(event) => onUpdate("requiredElements", event.target.value)} placeholder="예: 독립변인·종속변인 설정, 3회 반복 측정, 안전 수칙" />
-        </Field>
-        <Field label="기록 / 발표 분량">
-          <input className={inputClass} value={assignment.lengthRule} onChange={(event) => onUpdate("lengthRule", event.target.value)} placeholder="예: 보고서 A4 2쪽" />
-        </Field>
-        <div className="sm:col-span-2">
-          <Field label="가설 / 예상 결과 / 관찰 포인트">
-            <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.studentIdeas} onChange={(event) => onUpdate("studentIdeas", event.target.value)} placeholder="예상하는 결과나 확인하고 싶은 현상을 적어 주세요." />
-          </Field>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="세부 과목 / 단원">
-        <input className={inputClass} value={assignment.course} onChange={(event) => onUpdate("course", event.target.value)} placeholder="선택 사항" />
-      </Field>
-      <Field label="제출 형식">
-        <input className={inputClass} value={assignment.formatRule} onChange={(event) => onUpdate("formatRule", event.target.value)} placeholder="예: 보고서 PDF, 발표 자료" />
-      </Field>
-      <Field label="분량 / 시간 조건">
-        <input className={inputClass} value={assignment.lengthRule} onChange={(event) => onUpdate("lengthRule", event.target.value)} placeholder="예: 1500자, 5분" />
-      </Field>
-      <Field label="추가 요구사항">
-        <textarea className={`${inputClass} min-h-28 resize-y`} value={assignment.requiredElements} onChange={(event) => onUpdate("requiredElements", event.target.value)} placeholder="과제 안내에서 반드시 포함하라고 한 내용이 있다면 적어 주세요." />
-      </Field>
-    </div>
-  );
-}
-
 function TopicScreen({
   assignment,
   error,
@@ -654,6 +358,7 @@ function TopicScreen({
         <ContextBadge>{assignment.schoolLevel} {assignment.grade}학년</ContextBadge>
         <ContextBadge>{assignment.subject}</ContextBadge>
         <ContextBadge>{assignment.curriculum}</ContextBadge>
+        <CareerLinkStatusBadge value={assignment.careerLinked} />
       </div>
 
       <div className="mt-6 rounded-[1.75rem] border border-violet-200 bg-violet-50 p-5">
@@ -813,6 +518,7 @@ function WorkspaceScreen({
           <h1 className="text-2xl font-black text-slate-950">{analysis.taskType.primary}</h1>
           <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">분류 신뢰도 {Math.round(analysis.taskType.confidence * 100)}%</span>
           <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600">{analysis.curriculum.version}</span>
+          <CareerLinkStatusBadge value={assignment.careerLinked} />
         </div>
         <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{analysis.curriculum.basis}</p>
 
@@ -1079,4 +785,3 @@ function removeStorage(key: string) {
 const inputClass = "min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100";
 const primaryButtonClass = "inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50";
 const secondaryButtonClass = "inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50";
-const smallSecondaryButtonClass = "inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 transition hover:bg-slate-50";

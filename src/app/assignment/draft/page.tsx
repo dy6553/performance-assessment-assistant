@@ -10,6 +10,7 @@ import {
   assessmentFlowStorageKey,
   assessmentVerificationStorageKey,
 } from "@/features/assessment/assessment-flow";
+import { CareerLinkStatusBadge } from "@/features/assessment/career-link-status-badge";
 import type { AnalysisResult, AssignmentInput, DraftResult, VerificationResult } from "@/features/assessment/schemas";
 import { readApiResponse } from "@/lib/http/client-response";
 
@@ -90,6 +91,7 @@ export default function DraftResultPage() {
           <div className="min-w-0">
             <p className="text-xs font-black text-emerald-700">수행평가 초안</p>
             <h1 className="truncate text-lg font-black text-slate-950">{draft.title}</h1>
+            {assignment ? <div className="mt-1"><CareerLinkStatusBadge value={assignment.careerLinked} /></div> : null}
           </div>
           <button className="shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700" onClick={() => void copyDraft()} type="button">복사</button>
         </div>
