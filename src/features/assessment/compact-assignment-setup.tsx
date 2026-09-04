@@ -13,6 +13,7 @@ import {
   getAssignmentTypeByValue,
   initialAssignment,
 } from "./assessment-flow";
+import { CareerLinkSelector } from "./career-link-selector";
 import { PdfRubricUpload } from "./pdf-rubric-upload";
 import type { AssignmentInput } from "./schemas";
 
@@ -76,6 +77,10 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
     }
     if (!assignment.course.trim()) {
       setError("세부단원을 입력해 주세요.");
+      return;
+    }
+    if (assignment.careerLinked == null) {
+      setError("진로 연계 O 또는 X를 선택해 주세요.");
       return;
     }
     if (!assignment.formatRule.trim()) {
@@ -154,6 +159,11 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
               <input className={inputClass} value={assignment.course} onChange={(event) => update("course", event.target.value)} placeholder="세부단원 예: 인간, 사회, 환경과 행복" />
             </div>
           </Field>
+
+          <CareerLinkSelector
+            value={assignment.careerLinked}
+            onChange={(value) => update("careerLinked", value)}
+          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="제출 형식" required>

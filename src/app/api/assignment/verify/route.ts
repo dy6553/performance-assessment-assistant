@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const career = await getCareerAiContext();
+    const career = await getCareerAiContext(parsed.data.assignment.careerLinked);
     const result = await verifyDraft(
       applyCareerToAssignment(parsed.data.assignment, career),
       parsed.data.analysis,

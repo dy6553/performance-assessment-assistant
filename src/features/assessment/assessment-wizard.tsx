@@ -17,6 +17,7 @@ import {
   getSetupPath,
   initialAssignment,
 } from "./assessment-flow";
+import { CareerLinkSelector } from "./career-link-selector";
 import { PdfRubricUpload } from "./pdf-rubric-upload";
 import type {
   AnalysisResult,
@@ -49,6 +50,7 @@ const topicDependencyKeys: Array<keyof AssignmentInput> = [
   "subject",
   "course",
   "assignmentType",
+  "careerLinked",
   "teacherInstruction",
   "rubricText",
   "requiredElements",
@@ -141,6 +143,10 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
       setError("과목 및 단원을 입력해 주세요.");
       return;
     }
+    if (assignment.careerLinked == null) {
+      setError("진로 연계 O 또는 X를 선택해 주세요.");
+      return;
+    }
     if (assignment.teacherInstruction.trim().length < 2 && assignment.rubricText.trim().length < 2) {
       setError("과제 안내서·평가기준표 PDF를 올리거나 교사 과제 설명을 입력해 주세요.");
       return;
@@ -177,6 +183,7 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
           subject: assignment.subject,
           course: assignment.course,
           assignmentType: assignment.assignmentType,
+          careerLinked: assignment.careerLinked,
           teacherInstruction: assignment.teacherInstruction,
           rubricText: assignment.rubricText,
         }),
@@ -431,6 +438,14 @@ function SetupScreen({
         <Field label="과목 및 단원">
           <input className={inputClass} value={assignment.subject} onChange={(event) => onUpdate("subject", event.target.value)} placeholder="예: 통합사회1 / 인간, 사회, 환경과 행복" />
         </Field>
+      </div>
+
+      <div className="mt-5">
+        <CareerLinkSelector
+          value={assignment.careerLinked}
+          onChange={(value) => onUpdate("careerLinked", value)}
+          disabled={Boolean(loading) || topicLoading}
+        />
       </div>
 
       <div className="mt-6 rounded-[1.75rem] border border-violet-100 bg-violet-50/50 p-4 sm:p-5">

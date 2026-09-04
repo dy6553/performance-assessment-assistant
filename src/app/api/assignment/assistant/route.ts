@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
   try {
     const input = parsed.data;
-    const career = await getCareerAiContext();
+    const career = await getCareerAiContext(input.assignment?.careerLinked);
     const careerContext = careerContextForPrompt(career);
     const route = await routeModel({
       task: input.target === "draft" ? "final_rewriter" : "strategy",

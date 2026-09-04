@@ -10,9 +10,12 @@ export type CareerAiContext = {
   notes: string;
 };
 
-export async function getCareerAiContext(): Promise<CareerAiContext | null> {
+export async function getCareerAiContext(careerLinked?: boolean | null): Promise<CareerAiContext | null> {
   const profile = await getCurrentUserProfile();
-  if (!profile?.career_use_default) return null;
+  if (!profile) return null;
+
+  const shouldUseCareer = careerLinked ?? profile.career_use_default;
+  if (!shouldUseCareer) return null;
 
   const context: CareerAiContext = {
     interestField: profile.career_interest?.trim() ?? "",
