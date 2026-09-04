@@ -6,6 +6,7 @@ import {
   draftResultSchema,
   verificationResultSchema,
 } from "@/features/assessment/schemas";
+import { careerContextForPrompt, getCareerAiContext } from "@/features/assessment/server/career-context";
 import { generateStructured } from "@/lib/ai/nvidia";
 import { routeModel } from "@/lib/ai/router";
 import { publicApiError } from "@/lib/http/server-error";
@@ -63,9 +64,11 @@ export async function POST(request: Request) {
 
   try {
     const input = parsed.data;
+    const career = await getCareerAiContext();
+    const careerContext = careerContextForPrompt(career);
     const route = await routeModel({
       task: input.target === "draft" ? "final_rewriter" : "strategy",
-      inputCharacters: JSON.stringify(input).length,
+      inputCharacters: JSON.stringify({ input, careerContext }).length,
     });
 
     const outputContract = {
@@ -99,6 +102,7 @@ export async function POST(request: Request) {
             "학생의 생각과 최종 결정권을 존중하며, 요청하지 않은 내용을 임의로 적용하지 않는다.",
             "사실·통계·법·정책·연구처럼 외부 확인이 필요한 내용은 확정적으로 꾸며내지 말고 확인 필요성을 밝힌다.",
             "교사 안내와 루브릭을 가장 높은 우선순위로 유지한다.",
+            "careerContext가 제공되면 교과와 수행평가 목적에 자연스럽게 맞는 경우에만 참고하고, 억지로 진로와 연결하지 않는다.",
             "수정 요청이면 target은 입력으로 받은 target과 같아야 하고, 변경이 없는 상담이면 target은 none으로 한다.",
             "수정을 제안할 때 changes에는 JSON Pointer 경로별 독립 변경을 넣고 proposedValue에는 모든 변경이 적용된 전체 객체를 넣는다.",
             "각 changes.value는 요약문이 아니라 실제로 적용할 JSON 값이어야 한다.",
@@ -113,6 +117,7 @@ export async function POST(request: Request) {
             currentStage: input.stage,
             currentPath: input.pathname,
             editableTarget: input.target,
+            careerContext,
             assignment: input.assignment,
             previousAnalysis: input.analysis,
             currentDraft: input.draft,
