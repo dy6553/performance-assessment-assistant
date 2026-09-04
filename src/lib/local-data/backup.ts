@@ -41,10 +41,8 @@ export async function buildLocalBackup(ownerId: string): Promise<Blob> {
       dataUrl: blob ? await blobToDataUrl(blob) : null,
     });
   }
-  const stripOwner = <T extends Record<string, unknown>>(row: T) => {
-    const { ownerId: _ownerId, key: _key, ...rest } = row;
-    return rest;
-  };
+  const stripOwner = <T extends Record<string, unknown>>(row: T) =>
+    Object.fromEntries(Object.entries(row).filter(([key]) => key !== "ownerId" && key !== "key"));
   const payload: LocalBackupPayload = {
     app: "수행평가 도우미",
     format: "teston-local-backup",
