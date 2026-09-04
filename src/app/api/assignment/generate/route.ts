@@ -1,4 +1,5 @@
 import { generateRequestSchema } from "@/features/assessment/schemas";
+import { applyCareerToAssignment, getCareerAiContext } from "@/features/assessment/server/career-context";
 import { generateDraft } from "@/features/assessment/server/prompted-service";
 import { publicApiError } from "@/lib/http/server-error";
 
@@ -16,7 +17,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await generateDraft(parsed.data.assignment, parsed.data.analysis);
+    const career = await getCareerAiContext();
+    const result = await generateDraft(
+      applyCareerToAssignment(parsed.data.assignment, career),
+      parsed.data.analysis,
+    );
     return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return Response.json({ error: publicApiError(error, "초안 작성 중 오류가 발생했습니다.") }, { status: 502 });
