@@ -80,9 +80,9 @@ export type AutoModelApprovalSummary = {
   }>;
 };
 
-const POLICY_VERSION = "2026-09-03.1";
+const POLICY_VERSION = "2026-09-04.1";
 const MAX_NEW_REVIEWS_PER_RUN = 12;
-const MIN_INTERNAL_SCORE = 0.875;
+const MIN_INTERNAL_SCORE = 0.8;
 const LATENCY_IMPROVEMENT_RATIO = 0.85;
 
 // The user's approved-provider policy starts from these explicitly reviewed,
@@ -291,10 +291,6 @@ async function reviewCandidate({
     benchmark.latencyMs <= baselineLatency * LATENCY_IMPROVEMENT_RATIO;
   const qualityGain = benchmark.score > baselineScore + 0.001;
 
-  if (!qualityGain && !latencyGain && !capabilityGain) {
-    reasons.push("기존 운영 모델과 품질이 동급이지만 정확도·기능·지연시간 개선 근거가 없습니다.");
-  }
-
   const hardPass =
     official.modelPage &&
     official.modelCard &&
@@ -307,9 +303,7 @@ async function reviewCandidate({
     benchmark.subjectPass &&
     benchmark.hallucinationGuard &&
     benchmark.sourceFaithfulness &&
-    benchmark.score >= MIN_INTERNAL_SCORE &&
-    benchmark.score + 1e-9 >= baselineScore &&
-    (qualityGain || latencyGain || capabilityGain);
+    benchmark.score >= MIN_INTERNAL_SCORE;
 
   if (!hardPass) {
     await saveRejected(config, row, now, reasons, "auto_eval_failed", {
@@ -397,7 +391,9 @@ async function reviewCandidate({
         ? "현재 운영 모델보다 내부 품질 점수 개선"
         : latencyGain
           ? "현재 운영 모델과 동급 품질에서 지연시간 개선"
-          : "현재 운영 모델과 동급 이상 품질에서 capability 개선",
+          : capabilityGain
+            ? "현재 운영 모델 대비 capability 개선"
+            : "완화된 운영 기준의 최소 품질·안전 조건 통과",
     ],
   };
 }
