@@ -99,7 +99,13 @@ export async function researchAssignmentEvidence(
     ],
   });
 
-  return { data: run.data, route: routeForRun(route, run.model) };
+  // 네트워크로 직접 확인한 배열은 모델 출력보다 서버 원본을 우선해 검증 결과 변조 가능성을 제거합니다.
+  const data: ResearchResult = {
+    ...run.data,
+    liveSourceChecks: liveEvidence.liveSourceChecks,
+    academicCandidates: liveEvidence.academicCandidates,
+  };
+  return { data, route: routeForRun(route, run.model) };
 }
 
 export async function buildAssignmentExecutionPlan(
