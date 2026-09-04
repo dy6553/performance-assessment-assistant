@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { updateUserRoleAction, updateUserStatusAction } from "@/app/admin/actions";
 import { Card, PageHeader } from "@/components/ui";
 import { requireAdmin } from "@/features/admin/server/auth";
+import { UserDeleteButton } from "./user-delete-button";
 
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin();
@@ -70,6 +71,20 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
               <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">현재 계정에는 권한 변경 권한이 없습니다.</div>
             )}
           </Card>
+
+          {admin.role === "SUPER_ADMIN" ? (
+            <Card>
+              <h2 className="text-lg font-black text-rose-800">계정 삭제</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Supabase 인증 계정과 연결된 수행평가 데이터를 영구 삭제합니다. 현재 로그인한 관리자 본인은 삭제할 수 없습니다.
+              </p>
+              {user.id === admin.user.id ? (
+                <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">현재 로그인한 계정입니다. 다른 최고 관리자 계정으로 로그인해야 삭제할 수 있습니다.</div>
+              ) : (
+                <UserDeleteButton userId={user.id} label={developerId ? `개발자 ${developerId}` : user.nickname || user.email} />
+              )}
+            </Card>
+          ) : null}
         </div>
       </div>
     </>

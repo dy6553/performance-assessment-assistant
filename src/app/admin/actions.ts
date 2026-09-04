@@ -50,6 +50,36 @@ export async function updateUserRoleAction(formData: FormData) {
   revalidatePath(`/admin/users/${userId}`);
 }
 
+export async function deleteUserAccountAction(formData: FormData) {
+  const admin = await requireAdmin("SUPER_ADMIN");
+  const userId = String(formData.get("userId") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+  if (!userId || confirmation !== "DELETE") return { ok: false, message: "삭제 확인이 올바르지 않습니다." };
+  if (userId === admin.user.id) return { ok: false, message: "현재 로그인한 관리자 계정은 삭제할 수 없습니다." };
+
+  const target = await admin.repository.getUser(userId);
+  if (!target) return { ok: false, message: "삭제할 계정을 찾을 수 없습니다." };
+
+  await admin.repository.addAuditLog({
+    admin_user_id: admin.user.id,
+    action: "사용자 계정 영구 삭제",
+    target_type: "USER",
+    target_id: userId,
+    reason: null,
+    metadata: {
+      role: target.role,
+      developerId: target.developerId,
+      accountStatus: target.status,
+    },
+  });
+  await admin.repository.deleteUserAccount(userId);
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/developers");
+  return { ok: true, message: "계정을 삭제했습니다." };
+}
+
 export async function updateModelFlagAction(formData: FormData) {
   const admin = await requireAdmin("SUPER_ADMIN");
   const modelId = String(formData.get("modelId") ?? "");

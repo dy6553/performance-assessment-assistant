@@ -166,6 +166,12 @@ export class AdminRepository {
     });
   }
 
+  async deleteUserAccount(userId: string) {
+    await this.request(`/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+    });
+  }
+
   async listAuditLogs(limit = 100): Promise<AdminAuditLog[]> {
     return this.rest<AdminAuditLog[]>("admin_audit_logs", {
       select: "*",
@@ -254,7 +260,7 @@ export class AdminRepository {
 
   private async request<T>(
     path: string,
-    init: { method?: "GET" | "POST" | "PATCH"; body?: unknown } = {},
+    init: { method?: "GET" | "POST" | "PATCH" | "DELETE"; body?: unknown } = {},
   ): Promise<T> {
     const response = await fetch(`${this.config.baseUrl}${path}`, {
       method: init.method ?? "GET",
