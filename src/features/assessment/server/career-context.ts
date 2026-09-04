@@ -1,5 +1,6 @@
 import "server-only";
 
+import { resolveCareerLinkUsage } from "../career-link-policy";
 import type { AssignmentInput, TopicRecommendationRequest } from "../schemas";
 import { getCurrentUserProfile } from "@/lib/supabase/server/profile";
 
@@ -14,7 +15,7 @@ export async function getCareerAiContext(careerLinked?: boolean | null): Promise
   const profile = await getCurrentUserProfile();
   if (!profile) return null;
 
-  const shouldUseCareer = careerLinked ?? profile.career_use_default;
+  const shouldUseCareer = resolveCareerLinkUsage(careerLinked, profile.career_use_default);
   if (!shouldUseCareer) return null;
 
   const context: CareerAiContext = {
