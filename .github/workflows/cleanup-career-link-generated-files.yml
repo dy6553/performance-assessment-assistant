@@ -1,0 +1,28 @@
+name: Clean career link validation files
+
+on:
+  push:
+    branches:
+      - feat/career-link-ux-tests-cleanup-20260905
+
+permissions:
+  contents: write
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore generated files from main
+        shell: bash
+        run: |
+          git fetch origin main
+          git checkout origin/main -- next-env.d.ts package-lock.json
+          rm .github/workflows/cleanup-career-link-generated-files.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: remove generated validation changes"
+          git push origin HEAD:feat/career-link-ux-tests-cleanup-20260905
