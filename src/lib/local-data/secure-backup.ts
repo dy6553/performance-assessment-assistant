@@ -125,7 +125,7 @@ async function deriveKey(password: string, salt: Uint8Array, iterations: number)
     ["deriveKey"],
   );
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    { name: "PBKDF2", salt: toArrayBuffer(salt), iterations, hash: "SHA-256" },
     material,
     { name: "AES-GCM", length: 256 },
     false,
@@ -135,6 +135,10 @@ async function deriveKey(password: string, salt: Uint8Array, iterations: number)
 
 function aadFor(header: SecureBackupHeader) {
   return `${header.app}|${header.format}|${header.version}|${header.cipher}|${header.kdf}|${header.iterations}`;
+}
+
+function toArrayBuffer(value: Uint8Array): ArrayBuffer {
+  return value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength) as ArrayBuffer;
 }
 
 function startsWith(value: Uint8Array, prefix: Uint8Array) {
