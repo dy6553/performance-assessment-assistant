@@ -1,9 +1,18 @@
 "use client";
 
 export const LOCAL_DB_NAME = "assessment-helper-local-v1";
-export const LOCAL_DB_VERSION = 1;
+export const LOCAL_DB_VERSION = 2;
 
-export type StoreName = "assignments" | "chats" | "calendar" | "files" | "meta";
+export type StoreName =
+  | "assignments"
+  | "chats"
+  | "calendar"
+  | "files"
+  | "meta"
+  | "syncQueue"
+  | "syncState"
+  | "syncConflicts"
+  | "syncCrypto";
 
 let openPromise: Promise<IDBDatabase> | null = null;
 
@@ -14,7 +23,17 @@ export function openLocalDatabase(): Promise<IDBDatabase> {
     const request = indexedDB.open(LOCAL_DB_NAME, LOCAL_DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      for (const store of ["assignments", "chats", "calendar", "files", "meta"] as const) {
+      for (const store of [
+        "assignments",
+        "chats",
+        "calendar",
+        "files",
+        "meta",
+        "syncQueue",
+        "syncState",
+        "syncConflicts",
+        "syncCrypto",
+      ] as const) {
         if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: "key" });
       }
     };
@@ -40,7 +59,12 @@ export async function idbPut<T extends { key: string }>(store: StoreName, value:
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(store, "readwrite");
     transaction.objectStore(store).put(value);
-    transaction.oncomplete = () => resolve();
+    transaction.oncomplete = () => {
+      if (!store.startsWith("sync") && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("assessment-local-record-changed", { detail: { store, key: value.key } }));
+      }
+      resolve();
+    };
     transaction.onerror = () => reject(transaction.error ?? new Error("INDEXED_DB_WRITE_FAILED"));
     transaction.onabort = () => reject(transaction.error ?? new Error("INDEXED_DB_WRITE_ABORTED"));
   });
@@ -51,7 +75,12 @@ export async function idbDelete(store: StoreName, key: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(store, "readwrite");
     transaction.objectStore(store).delete(key);
-    transaction.oncomplete = () => resolve();
+    transaction.oncomplete = () => {
+      if (!store.startsWith("sync") && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("assessment-local-record-deleted", { detail: { store, key } }));
+      }
+      resolve();
+    };
     transaction.onerror = () => reject(transaction.error ?? new Error("INDEXED_DB_DELETE_FAILED"));
   });
 }

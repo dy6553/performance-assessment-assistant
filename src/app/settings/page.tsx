@@ -39,6 +39,11 @@ const CATEGORIES = [
     description: "앱을 열었을 때 처음 표시할 수행평가 화면을 설정합니다.",
   },
   {
+    href: "/settings/devices",
+    title: "내 기기 및 동기화",
+    description: "암호화 자동백업 상태와 등록된 기기를 확인하고 다른 기기의 연결을 해제합니다.",
+  },
+  {
     href: "/settings/storage",
     title: "저장공간 및 데이터",
     description: "이 기기의 수행평가·AI 대화·캘린더·업로드 파일 용량, 저장 보호와 삭제를 관리합니다.",

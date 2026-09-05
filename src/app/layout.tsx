@@ -8,6 +8,7 @@ import { AiStageActions } from "@/components/ai-stage-actions";
 import { CalendarReminders } from "@/components/calendar-reminders";
 import { AppShell } from "@/components/app-shell";
 import { LocalDataBoundary } from "@/components/local-data-boundary";
+import { EncryptedSyncRuntime } from "@/components/encrypted-sync-runtime";
 import { PreferenceRuntime } from "@/components/preference-runtime";
 import { SchoolDataScopeGuard } from "@/components/school-data-scope-guard";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
@@ -65,6 +66,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <SchoolDataScopeGuard scope={dataScope} />
           <AiRequestProgress />
           <CalendarReminders />
+          <EncryptedSyncRuntime enabled={Boolean(authenticatedUser)} />
           <AppShell isAdmin={isAdmin} signedIn={Boolean(authenticatedUser)}>{children}</AppShell>
           <AiStageActions />
           <AiAssistant />

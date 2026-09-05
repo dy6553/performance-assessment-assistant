@@ -56,6 +56,7 @@ export type SettingsSection =
   | "behavior"
   | "notifications"
   | "navigation"
+  | "devices"
   | "storage"
   | "backup"
   | "about"

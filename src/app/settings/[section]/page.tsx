@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LocalDataSettings } from "@/components/local-data-settings";
+import { DeviceSyncSettings } from "@/components/device-sync-settings";
 import { SecureLocalBackupSettings } from "@/components/secure-local-backup-settings";
 import { SettingsPreferences, type SettingsSection } from "@/components/settings-preferences";
 import { PageHeader } from "@/components/ui";
@@ -35,6 +36,10 @@ const SECTION_META: Record<SettingsSection, { title: string; description: string
   navigation: {
     title: "시작 및 탐색",
     description: "앱을 열었을 때 처음 표시할 수행평가 화면을 설정합니다.",
+  },
+  devices: {
+    title: "내 기기 및 동기화",
+    description: "현재 기기와 같은 계정의 다른 기기, 마지막 접속·동기화 시각을 확인하고 원격 연결을 해제합니다.",
   },
   storage: {
     title: "저장공간 및 데이터",
@@ -111,6 +116,7 @@ export default async function SettingsSectionPage({
       <PageHeader description={meta.description} eyebrow="앱 설정" title={meta.title} />
 
       {section === "storage" ? <LocalDataSettings mode="storage" /> : null}
+      {section === "devices" ? <DeviceSyncSettings /> : null}
       {section === "backup" ? <SecureLocalBackupSettings /> : null}
 
       <SettingsPreferences
