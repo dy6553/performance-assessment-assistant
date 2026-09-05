@@ -2,7 +2,7 @@
 
 - 구현일: 2026-09-05
 - 대상: 수행도우미
-- 구현 커밋: 최종 배포 커밋의 직전 구현 커밋(아래 배포 기록에서 갱신)
+- 구현 커밋 SHA: `cb12698cc5db5fc93ec21d571bb9ef73d02e7e77`
 
 ## 변경 파일
 
@@ -45,4 +45,7 @@ IndexedDB의 수행평가 프로젝트·주제·조사·초안·완성본, AI �
 
 ## Production 배포
 
-Vercel Git 연동 production 배포의 최종 상태와 URL은 배포 확인 후 이 문서 후속 커밋에 기록한다.
+- Vercel deployment: `dpl_7zUoRgdiokTKMEysckSf9kQMDie7`
+- 상태: READY
+- URL: https://wanhee-two.vercel.app
+- Production 홈 HTTP 200 및 보호된 `/settings/devices` 로그인 리다이렉트 확인
