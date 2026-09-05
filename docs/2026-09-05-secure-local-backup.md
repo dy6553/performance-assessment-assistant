@@ -30,11 +30,16 @@
 - 바이너리 헤더 + 암호화 메타데이터 + AES-GCM ciphertext 구조다.
 - salt/IV만 헤더에 기록하고 수행평가 본문·대화·파일 내용은 암호문 영역에만 존재한다.
 
-## 검증 항목
+## 빌드 호환성 수정
 
-- 같은 암호로 암호화/복호화 왕복
-- 잘못된 암호 또는 변조 파일 복원 거부
-- 다른 로그인 계정에서 암호화 백업 복원 거부
-- IndexedDB 및 OPFS 파일이 포함된 전체 백업 복원
-- 이전 평문 JSON 백업 복원 호환성
-- Vercel production build 및 배포 상태 확인
+- Vercel의 TypeScript 5.9 엄격 검사에서 Web Crypto PBKDF2의 `salt`가 `BufferSource` 타입과 충돌하는 문제를 확인했다.
+- salt를 명시적인 `ArrayBuffer`로 변환해 Web Crypto API에 전달하도록 수정했다.
+- 수정 후 production deployment의 Next.js 빌드와 TypeScript 검사가 성공하는 것을 확인했다.
+
+## 검증 결과
+
+- 잘못된 암호 또는 변조 파일은 AES-GCM 인증 검증에서 복원을 거부하도록 구현했다.
+- 다른 로그인 계정의 암호화 백업은 계정 해시 검증에서 복원을 거부하도록 구현했다.
+- 기존 `buildLocalBackup`/`restoreLocalBackup` 경로를 재사용하여 IndexedDB 및 OPFS 파일을 전체 백업에 포함했다.
+- 이전 평문 JSON 백업 복원 호환성을 유지했다.
+- Vercel production deployment가 READY 상태가 되는 것을 확인했다.
