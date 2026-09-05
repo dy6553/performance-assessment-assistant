@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LocalDataSettings } from "@/components/local-data-settings";
+import { SecureLocalBackupSettings } from "@/components/secure-local-backup-settings";
 import { SettingsPreferences, type SettingsSection } from "@/components/settings-preferences";
 import { PageHeader } from "@/components/ui";
 import packageJson from "../../../../package.json";
@@ -41,7 +42,7 @@ const SECTION_META: Record<SettingsSection, { title: string; description: string
   },
   backup: {
     title: "백업 및 복원",
-    description: "이 기기의 수행평가 작업 데이터와 주요 앱 설정을 각각 백업하거나 다시 불러옵니다.",
+    description: "이 기기의 수행평가 프로젝트·초안·완성본·AI 대화·캘린더·업로드 원본을 암호화해 백업하거나 다시 불러옵니다.",
   },
   about: {
     title: "앱 정보",
@@ -110,7 +111,7 @@ export default async function SettingsSectionPage({
       <PageHeader description={meta.description} eyebrow="앱 설정" title={meta.title} />
 
       {section === "storage" ? <LocalDataSettings mode="storage" /> : null}
-      {section === "backup" ? <LocalDataSettings mode="backup" /> : null}
+      {section === "backup" ? <SecureLocalBackupSettings /> : null}
 
       <SettingsPreferences
         appVersion={packageJson.version}
