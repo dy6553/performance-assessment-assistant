@@ -91,7 +91,7 @@ export function LocalDataBoundary({ ownerId, children }: { ownerId: string | nul
       {children}
       {ownerId && workPath ? (
         <div className="pointer-events-none fixed right-3 top-[4.5rem] z-40 rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-[11px] font-black text-slate-500 shadow-sm backdrop-blur md:right-5">
-          {saveState === "saving" ? "기기에 저장 중…" : saveState === "error" ? "로컬 저장 확인 필요" : "이 기기에 저장됨"}
+          {saveState === "saving" ? "기기에 저장 중…" : saveState === "error" ? "저장 실패 · 저장공간을 확인해 주세요" : saveState === "saved" ? "이 기기에 저장됨" : "저장 상태 확인 중"}
         </div>
       ) : null}
     </>

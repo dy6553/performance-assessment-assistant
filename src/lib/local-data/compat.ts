@@ -49,7 +49,9 @@ export function scheduleLocalProjectSave() {
   if (persistTimer !== null) window.clearTimeout(persistTimer);
   persistTimer = window.setTimeout(() => {
     persistTimer = null;
-    void persistCurrentProject();
+    void persistCurrentProject().catch(() => {
+      window.dispatchEvent(new CustomEvent("assessment-local-save-state", { detail: { state: "error" } }));
+    });
   }, 400);
   window.dispatchEvent(new CustomEvent("assessment-local-save-state", { detail: { state: "saving" } }));
 }

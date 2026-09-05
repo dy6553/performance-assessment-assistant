@@ -3,6 +3,7 @@
 import { idbDelete, idbGetAll, idbPut } from "./db";
 import { getCurrentProjectId } from "./assignments";
 import { getConfiguredOwnerId } from "./owner";
+import { checkStorageCapacity } from "./capacity";
 
 export type LocalFileMeta = {
   key: string;
@@ -30,6 +31,7 @@ export async function saveCurrentProjectFile(file: File): Promise<LocalFileMeta 
 }
 
 export async function saveLocalFile(ownerId: string, assignmentId: string, file: File): Promise<LocalFileMeta> {
+  await checkStorageCapacity(file.size);
   const id = crypto.randomUUID();
   const safeName = file.name.replace(/[^0-9A-Za-z가-힣._-]+/g, "_").slice(0, 140) || "upload";
   const key = `${ownerId}:${assignmentId}:${id}`;

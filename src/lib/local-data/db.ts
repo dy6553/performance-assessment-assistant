@@ -19,8 +19,8 @@ export function openLocalDatabase(): Promise<IDBDatabase> {
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("INDEXED_DB_OPEN_FAILED"));
-    request.onblocked = () => reject(new Error("INDEXED_DB_BLOCKED"));
+    request.onerror = () => { openPromise = null; reject(request.error ?? new Error("INDEXED_DB_OPEN_FAILED")); };
+    request.onblocked = () => { openPromise = null; reject(new Error("INDEXED_DB_BLOCKED")); };
   });
   return openPromise;
 }

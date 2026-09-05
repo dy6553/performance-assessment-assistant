@@ -7,12 +7,16 @@ import {
   deleteAssignmentProject,
   getCurrentProjectId,
   listAssignmentProjects,
+  listAssignmentTrash,
+  purgeExpiredAssignmentTrash,
+  restoreAssignment,
   type AssignmentProject,
 } from "@/lib/local-data/assignments";
 import { buildLocalBackup, deleteAllLocalDataForOwner, restoreLocalBackup } from "@/lib/local-data/backup";
 import { deleteProjectChat, listProjectChats, type LocalChatRecord } from "@/lib/local-data/chats";
 import { deleteLocalFile, listLocalFiles, type LocalFileMeta } from "@/lib/local-data/files";
 import { getConfiguredOwnerId } from "@/lib/local-data/owner";
+import { storageLimitMB, setStorageLimitMB } from "@/lib/local-data/capacity";
 import { SETTINGS_BACKUP_KEYS } from "@/lib/client-preferences";
 import {
   readCalendarEvents,
@@ -48,6 +52,8 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [trash, setTrash] = useState<AssignmentProject[]>([]);
+  const [limit, setLimit] = useState(300);
 
   useEffect(() => { void refresh(); }, []);
 
@@ -58,6 +64,9 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
       return;
     }
     try {
+      setLimit(storageLimitMB());
+      const expiredProjectIds = await purgeExpiredAssignmentTrash(ownerId);
+      await Promise.all(expiredProjectIds.map((projectId) => deleteProjectChat(ownerId, projectId)));
       const [estimate, isPersistent, assignments, chats, files] = await Promise.all([
         navigator.storage?.estimate?.() ?? Promise.resolve({ usage: undefined, quota: undefined }),
         navigator.storage?.persisted?.() ?? Promise.resolve(null),
@@ -65,6 +74,8 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
         listProjectChats(ownerId),
         listLocalFiles(ownerId),
       ]);
+      await Promise.all(files.filter(file => expiredProjectIds.includes(file.assignmentId)).map(deleteLocalFile));
+      setTrash(await listAssignmentTrash(ownerId));
       const events = readCalendarEvents();
       const preferences = SETTINGS_BACKUP_KEYS.flatMap((key) => {
         const value = localStorage.getItem(key);
@@ -173,9 +184,9 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
     setBusy(true);
     try {
       const selectedProjectIds = projectRows.filter((row) => selectedIds.includes(projectToken(row.id))).map((row) => row.id);
-      const selectedChats = chatRows.filter((row) => selectedIds.includes(chatToken(row.key)));
+      const selectedChats = chatRows.filter((row) => selectedIds.includes(chatToken(row.key)) && !selectedProjectIds.includes(row.assignmentId));
       const selectedCalendarIds = calendarEvents.filter((event) => selectedIds.includes(calendarToken(event.id))).map((event) => event.id);
-      const selectedFiles = fileRows.filter((file) => selectedIds.includes(fileToken(file.key)));
+      const selectedFiles = fileRows.filter((file) => selectedIds.includes(fileToken(file.key)) && !selectedProjectIds.includes(file.assignmentId));
       const selectedPreferences = preferenceRows.filter((entry) => selectedIds.includes(preferenceToken(entry.key)));
       const selectedSessions = sessionRows.filter((entry) => selectedIds.includes(sessionToken(entry.key)));
 
@@ -199,7 +210,7 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
 
       setSelectedIds([]);
       setConfirmDelete(false);
-      setMessage(`선택한 로컬 데이터 ${selectedIds.length}개를 삭제했습니다. 삭제한 앱 설정은 다음 화면부터 기본값이 적용될 수 있습니다.`);
+      setMessage(`선택한 자료를 정리했습니다. 수행평가 프로젝트는 7일간 휴지통에서 복원할 수 있습니다.`);
       await refresh();
     } catch {
       setMessage("선택한 로컬 데이터를 삭제하지 못했습니다.");
@@ -274,6 +285,20 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
 
   return (
     <div className="mb-6 space-y-4">
+      <Panel title="기기 저장 한도와 휴지통" description="휴지통 문서는 7일 동안 복원할 수 있습니다. 기간이 지난 문서는 이 화면을 열 때 정리합니다. 다운로드 폴더 파일은 파일 앱에서 관리해 주세요.">
+        <label className="block">저장 한도 (MB)
+          <input className="m-2 min-h-12 w-28 rounded-xl border px-3" type="number" min="50" max="2000" value={limit} onChange={event => setLimit(Number(event.target.value))} />
+        </label>
+        <button className={secondaryButton} type="button" onClick={() => {
+          try { setStorageLimitMB(limit); setMessage("저장 한도를 변경했습니다."); }
+          catch (error) { setMessage(error instanceof Error ? error.message : "한도를 확인해 주세요."); }
+        }}>한도 저장</button>
+        {usage !== null && usage >= limit * 1024 ** 2 * 0.8 ? <p role="status">저장 한도의 80% 이상 사용 중입니다. 자료를 백업하고 정리해 주세요.</p> : null}
+        {trash.map(row => <div key={row.key} className="mt-3 flex flex-wrap items-center gap-3">
+          <span>{row.title || "수행평가"} · 휴지통</span>
+          <button className={secondaryButton} type="button" onClick={() => void restoreAssignment(getConfiguredOwnerId(), row.id).then(refresh).catch(() => setMessage("복원하지 못했습니다. 다시 시도해 주세요."))}>복원</button>
+        </div>)}
+      </Panel>
       <Panel title="현재 계정의 이 기기 저장 데이터" description="수행평가 작성 내용과 AI 작업 기록은 이 기기의 IndexedDB에 저장됩니다. 업로드 원본은 OPFS를 우선 사용하고 지원하지 않는 환경에서는 IndexedDB Blob으로 보관합니다.">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="수행평가 프로젝트" value={`${projectRows.length}개`} />
