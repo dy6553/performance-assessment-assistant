@@ -95,7 +95,7 @@ export function SettingsPreferences({
   const [reduceMotion, setReduceMotion] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
   const [largeControls, setLargeControls] = useState(false);
-  const [fastResponse, setFastResponse] = useState(false);
+  const [fastResponse, setFastResponse] = useState(true);
   const [haptics, setHaptics] = useState(false);
   const [dataSaver, setDataSaver] = useState(false);
   const [keepAwake, setKeepAwake] = useState(false);
@@ -132,7 +132,7 @@ export function SettingsPreferences({
       setReduceMotion(localStorage.getItem(REDUCE_MOTION_KEY) === "1");
       setHighContrast(localStorage.getItem(HIGH_CONTRAST_KEY) === "1");
       setLargeControls(localStorage.getItem(LARGE_CONTROLS_KEY) === "1");
-      setFastResponse(localStorage.getItem(FAST_RESPONSE_KEY) === "1");
+      setFastResponse(localStorage.getItem(FAST_RESPONSE_KEY) !== "0");
       setHaptics(localStorage.getItem(HAPTIC_KEY) === "1");
       setDataSaver(localStorage.getItem(DATA_SAVER_KEY) === "1");
       setKeepAwake(localStorage.getItem(WAKE_KEY) === "1");
@@ -295,7 +295,7 @@ export function SettingsPreferences({
     document.documentElement.dataset.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "true" : "false";
     document.documentElement.dataset.highContrast = "false";
     document.documentElement.dataset.largeControls = "false";
-    document.documentElement.dataset.fastResponse = "false";
+    document.documentElement.dataset.fastResponse = "true";
     document.documentElement.dataset.dataSaver = "false";
     document.documentElement.style.colorScheme = nextTheme;
     window.dispatchEvent(new Event("assessment-theme-change"));
@@ -425,7 +425,7 @@ export function SettingsPreferences({
   } else if (section === "behavior") {
     content = (
       <>
-        <SettingsRow title="빠른 반응 모드" description="버튼과 화면 전환 시간을 더 짧게 적용합니다." control={<PreferenceToggle enabled={fastResponse} onChange={stageFastResponse} label="빠른 반응 모드" />} />
+        <SettingsRow title="빠른 반응 모드" description="기본으로 켜집니다. 화면 전환만 빠르게 하며 AI 모델·추론·결과 분량에는 영향을 주지 않습니다." control={<PreferenceToggle enabled={fastResponse} onChange={stageFastResponse} label="빠른 반응 모드" />} />
         <SettingsRow title="버튼 진동" description={supportsHaptics ? "버튼을 누를 때 짧게 진동합니다." : "이 기기에서는 지원하지 않습니다."} disabled={!supportsHaptics} control={<PreferenceToggle enabled={haptics} disabled={!supportsHaptics} onChange={(value) => { setHaptics(value); setMessage(""); }} label="버튼 진동" />} />
         <SettingsRow title="데이터 절약 모드" description="배경 효과와 불필요한 화면 효과를 줄입니다. 빠른 반응 모드와 동시에 사용하지 않습니다." control={<PreferenceToggle enabled={dataSaver} onChange={stageDataSaver} label="데이터 절약 모드" />} />
         <SettingsRow title="화면 계속 켜기" description={supportsWakeLock ? "앱을 사용하는 동안 화면 자동 꺼짐을 방지합니다." : "이 브라우저에서는 지원하지 않습니다."} disabled={!supportsWakeLock} control={<PreferenceToggle enabled={keepAwake} disabled={!supportsWakeLock} onChange={(value) => { setKeepAwake(value); setMessage(""); }} label="화면 계속 켜기" />} />
