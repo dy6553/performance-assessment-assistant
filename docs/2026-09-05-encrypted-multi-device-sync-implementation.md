@@ -69,3 +69,12 @@ IndexedDB의 수행평가 프로젝트·주제·조사·초안·완성본, AI �
 - Production URL: https://wanhee-two.vercel.app
 - 실제 URL 확인: 홈 HTTP 200, 보호 API 비로그인 차단 확인
 - 이 문서를 포함한 최종 문서 commit SHA는 GitHub `main`의 이 파일 revision이며 최종 보고서에 함께 기록한다.
+
+## 2026-09-06 모바일 저장관리 UI 보완
+
+- `src/components/encrypted-sync-runtime.tsx`: 동기화 상태 버튼을 모바일 왼쪽으로 분리해 오른쪽 AI 도우미 버튼과 겹치지 않도록 했다.
+- `src/components/enhanced-ai-assistant.tsx`: 모바일 AI 도우미 버튼 높이와 위치를 하단 내비게이션 safe area에 맞게 조정했다.
+- `src/components/local-data-settings.tsx`: 저장 데이터 통계를 모바일에서도 2열 compact grid로 표시해 세로 여백을 줄였다.
+- 프로젝트·AI 대화·캘린더·파일·설정 제목을 링크로 바꾸고, 프로젝트 링크는 해당 프로젝트를 현재 프로젝트로 선택한 뒤 저장된 진행 단계 화면으로 이동한다.
+- 제목 링크와 삭제 선택 체크박스를 별도 조작 요소로 분리했으며, 접근성 이름과 키보드 focus 표시를 추가했다.
+- TypeScript, ESLint, 전체 7개 단위 테스트, Next.js Production build 통과.

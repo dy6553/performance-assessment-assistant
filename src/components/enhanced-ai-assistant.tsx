@@ -168,7 +168,7 @@ export function EnhancedAiAssistant() {
 
   return (
     <>
-      <button aria-label="AI 도우미 열기" className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.4rem)] right-4 z-[60] inline-flex min-h-13 items-center gap-2 rounded-full bg-gradient-to-r from-violet-700 to-fuchsia-600 px-4 py-3 text-sm font-black text-white shadow-xl transition hover:scale-[1.02] active:scale-[0.97] md:bottom-6 md:right-6" onClick={showAssistant} type="button">
+      <button aria-label="AI 도우미 열기" className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] right-3 z-[60] inline-flex min-h-12 items-center gap-2 rounded-full bg-gradient-to-r from-violet-700 to-fuchsia-600 px-4 py-2.5 text-sm font-black text-white shadow-xl transition hover:scale-[1.02] active:scale-[0.97] md:bottom-6 md:right-6" onClick={showAssistant} type="button">
         <Icon className="size-5" name="sparkles" /> AI 도우미
       </button>
 

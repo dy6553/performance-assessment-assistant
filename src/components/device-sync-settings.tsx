@@ -22,11 +22,12 @@ export function DeviceSyncSettings() {
     } catch { setError("기기 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."); }
   }
   useEffect(() => {
-    void refresh();
+    const initial = window.setTimeout(() => void refresh(), 0);
     const changed = () => void refresh();
     window.addEventListener("assessment-sync-conflicts-changed", changed);
     window.addEventListener("assessment-sync-state", changed);
     return () => {
+      window.clearTimeout(initial);
       window.removeEventListener("assessment-sync-conflicts-changed", changed);
       window.removeEventListener("assessment-sync-state", changed);
     };

@@ -31,7 +31,7 @@ export function EncryptedSyncRuntime({ enabled }: { enabled: boolean }) {
   if (!enabled) return null;
   return (
     <button
-      className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 z-40 min-h-11 rounded-full border border-violet-200 bg-white/95 px-3 py-2 text-xs font-black text-violet-800 shadow-md backdrop-blur md:bottom-5 md:right-5"
+      className="fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] left-3 z-40 max-w-[calc(100vw-10.5rem)] rounded-full border border-violet-200 bg-white/95 px-3 py-2 text-xs font-black text-violet-800 shadow-md backdrop-blur md:bottom-5 md:left-5 md:max-w-none"
       onClick={() => void syncNow()}
       title={lastSyncAt ? `마지막 동기화: ${new Date(lastSyncAt).toLocaleString("ko-KR")}` : "눌러서 지금 동기화"}
       type="button"

@@ -153,7 +153,12 @@ async function pushQueue(deviceId: string) {
   if (!batch.length) return;
   const response = await api<{ accepted: Array<{ recordId: string; version: number }>; conflicts: SyncRecord[] }>("push", {
     deviceId,
-    records: batch.map(({ key: _key, attempts: _attempts, nextAttemptAt: _next, ...record }) => record),
+    records: batch.map((item) => ({
+      recordId: item.recordId, recordType: item.recordType, version: item.version, baseVersion: item.baseVersion,
+      sourceDeviceId: item.sourceDeviceId, updatedAt: item.updatedAt, deletedAt: item.deletedAt,
+      encryptedPayload: item.encryptedPayload, payloadIv: item.payloadIv,
+      payloadSchemaVersion: item.payloadSchemaVersion, contentHash: item.contentHash,
+    })),
   });
   for (const accepted of response.accepted) {
     await idbPut("syncState", { key: accepted.recordId, value: accepted.version });
@@ -317,8 +322,7 @@ export async function listConflicts() {
 export async function resolveConflict(recordId: string, choice: "local" | "remote" | "both") {
   const conflict = await idbGet<ConflictRow>("syncConflicts", recordId);
   if (!conflict) return;
-  const [store, ...parts] = recordId.split(":");
-  const localKey = parts.join(":");
+  const [store] = recordId.split(":");
   const cryptoRow = await idbGet<CryptoRow>("syncCrypto", SYNC_KEY_KEY);
   const key = cryptoRow?.value instanceof CryptoKey ? cryptoRow.value : null;
   if (!key) throw new Error("SYNC_KEY_MISSING");

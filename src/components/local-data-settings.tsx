@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 
 import {
   createFreshProjectId,
@@ -10,6 +11,7 @@ import {
   listAssignmentTrash,
   purgeExpiredAssignmentTrash,
   restoreAssignment,
+  setCurrentProjectId,
   type AssignmentProject,
 } from "@/lib/local-data/assignments";
 import { buildLocalBackup, deleteAllLocalDataForOwner, restoreLocalBackup } from "@/lib/local-data/backup";
@@ -282,6 +284,8 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
     ...sessionRows.map((entry) => sessionToken(entry.key)),
   ];
   const projectTitle = (projectId: string) => projectRows.find((row) => row.id === projectId)?.title || projectRows.find((row) => row.id === projectId)?.subject || "연결 프로젝트";
+  const projectById = (projectId: string) => projectRows.find((row) => row.id === projectId);
+  const projectHref = (projectId: string) => assignmentStageHref(projectById(projectId)?.stage ?? "setup");
 
   return (
     <div className="mb-6 space-y-4">
@@ -300,7 +304,7 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
         </div>)}
       </Panel>
       <Panel title="현재 계정의 이 기기 저장 데이터" description="수행평가 작성 내용과 AI 작업 기록은 이 기기의 IndexedDB에 저장됩니다. 업로드 원본은 OPFS를 우선 사용하고 지원하지 않는 환경에서는 IndexedDB Blob으로 보관합니다.">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
           <Stat label="수행평가 프로젝트" value={`${projectRows.length}개`} />
           <Stat label="AI 대화" value={`${chatRows.length}개`} />
           <Stat label="캘린더 일정" value={`${calendarEvents.length}개`} />
@@ -330,6 +334,8 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
               description={`${row.subject || "과목 미입력"} · ${stageLabel(row.stage)} · ${formatDate(row.updatedAt)}`}
               key={row.id}
               label={row.title || row.subject || "제목 없는 수행평가"}
+              href={assignmentStageHref(row.stage)}
+              onOpen={() => setCurrentProjectId(row.id)}
               onChange={() => toggle(projectToken(row.id))}
               trailing={<button className={tinyButton} onClick={(event) => { event.preventDefault(); event.stopPropagation(); selectProjectBundle(row.id); }} type="button">연결 데이터 함께 선택</button>}
             />
@@ -338,25 +344,25 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
 
         <SelectionSection title="AI 대화" count={chatRows.length} onSelectAll={() => selectIds(chatRows.map((row) => chatToken(row.key)))}>
           {chatRows.map((row) => (
-            <CheckRow checked={selectedIds.includes(chatToken(row.key))} description={`${row.messages.length}개 메시지 · ${formatDate(row.updatedAt)}`} key={row.key} label={`${projectTitle(row.assignmentId)} AI 대화`} onChange={() => toggle(chatToken(row.key))} />
+            <CheckRow checked={selectedIds.includes(chatToken(row.key))} description={`${row.messages.length}개 메시지 · ${formatDate(row.updatedAt)}`} href={projectHref(row.assignmentId)} key={row.key} label={`${projectTitle(row.assignmentId)} AI 대화`} onChange={() => toggle(chatToken(row.key))} onOpen={() => setCurrentProjectId(row.assignmentId)} />
           ))}
         </SelectionSection>
 
         <SelectionSection title="캘린더 일정" count={calendarEvents.length} onSelectAll={() => selectIds(calendarEvents.map((event) => calendarToken(event.id)))}>
           {calendarEvents.map((event) => (
-            <CheckRow checked={selectedIds.includes(calendarToken(event.id))} description={`${event.date}${event.time ? ` ${event.time}` : ""} · ${calendarTypeLabel(event.type)}${event.project ? ` · ${event.project}` : ""}`} key={event.id} label={event.title} onChange={() => toggle(calendarToken(event.id))} />
+            <CheckRow checked={selectedIds.includes(calendarToken(event.id))} description={`${event.date}${event.time ? ` ${event.time}` : ""} · ${calendarTypeLabel(event.type)}${event.project ? ` · ${event.project}` : ""}`} href="/calendar" key={event.id} label={event.title} onChange={() => toggle(calendarToken(event.id))} />
           ))}
         </SelectionSection>
 
         <SelectionSection title="업로드 원본 파일" count={fileRows.length} onSelectAll={() => selectIds(fileRows.map((file) => fileToken(file.key)))}>
           {fileRows.map((file) => (
-            <CheckRow checked={selectedIds.includes(fileToken(file.key))} description={`${formatBytes(file.size)} · ${file.storage === "opfs" ? "기기 파일 저장소" : "IndexedDB"} · ${projectTitle(file.assignmentId)}`} key={file.key} label={file.name} onChange={() => toggle(fileToken(file.key))} />
+            <CheckRow checked={selectedIds.includes(fileToken(file.key))} description={`${formatBytes(file.size)} · ${file.storage === "opfs" ? "기기 파일 저장소" : "IndexedDB"} · ${projectTitle(file.assignmentId)}`} href={projectHref(file.assignmentId)} key={file.key} label={file.name} onChange={() => toggle(fileToken(file.key))} onOpen={() => setCurrentProjectId(file.assignmentId)} />
           ))}
         </SelectionSection>
 
         <SelectionSection title="앱 설정" count={preferenceRows.length} onSelectAll={() => selectIds(preferenceRows.map((entry) => preferenceToken(entry.key)))}>
           {preferenceRows.map((entry) => (
-            <CheckRow checked={selectedIds.includes(preferenceToken(entry.key))} description={`${preferenceDescription(entry.key)} · ${formatBytes(entry.bytes)}`} key={entry.key} label={preferenceLabel(entry.key)} onChange={() => toggle(preferenceToken(entry.key))} />
+            <CheckRow checked={selectedIds.includes(preferenceToken(entry.key))} description={`${preferenceDescription(entry.key)} · ${formatBytes(entry.bytes)}`} href="/settings" key={entry.key} label={preferenceLabel(entry.key)} onChange={() => toggle(preferenceToken(entry.key))} />
           ))}
         </SelectionSection>
 
@@ -395,23 +401,23 @@ function SelectionSection({ title, count, onSelectAll, children }: { title: stri
   );
 }
 
-function CheckRow({ checked, label, description, onChange, trailing }: { checked: boolean; label: string; description: string; onChange: () => void; trailing?: ReactNode }) {
+function CheckRow({ checked, label, description, onChange, trailing, href, onOpen }: { checked: boolean; label: string; description: string; onChange: () => void; trailing?: ReactNode; href?: string; onOpen?: () => void }) {
   return (
-    <label className={`flex cursor-pointer items-start gap-3 px-4 py-3 transition ${checked ? "bg-rose-50/70" : "bg-white hover:bg-slate-50"}`}>
-      <input checked={checked} className="mt-1 size-4 accent-rose-600" onChange={onChange} type="checkbox" />
+    <div className={`grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 px-4 py-3 transition ${checked ? "bg-rose-50/70" : "bg-white hover:bg-slate-50"}`}>
+      <input aria-label={`${label} 선택`} checked={checked} className="mt-1 size-4 cursor-pointer accent-rose-600" onChange={onChange} type="checkbox" />
       <span className="min-w-0 flex-1">
-        <span className="block break-words text-sm font-black text-slate-900">{label}</span>
+        {href ? <Link className="block break-words text-sm font-black text-slate-900 underline-offset-4 hover:text-violet-700 hover:underline focus-visible:rounded focus-visible:outline-2 focus-visible:outline-violet-600" href={href} onClick={onOpen}>{label}</Link> : <span className="block break-words text-sm font-black text-slate-900">{label}</span>}
         <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{description}</span>
       </span>
-      {trailing ? <span className="shrink-0">{trailing}</span> : null}
-    </label>
+      {trailing ? <span className="col-start-2 mt-2 justify-self-start sm:mt-0 sm:justify-self-end">{trailing}</span> : null}
+    </div>
   );
 }
 
 function Panel({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-black text-slate-950">{title}</h2><p className="mt-1 text-sm font-semibold leading-6 text-slate-500">{description}</p><div className="mt-4">{children}</div></section>;
 }
-function Stat({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl bg-slate-50 p-3"><p className="text-xs font-black text-slate-400">{label}</p><p className="mt-1 font-black text-slate-900">{value}</p></div>; }
+function Stat({ label, value }: { label: string; value: string }) { return <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2.5"><p className="truncate text-[11px] font-black text-slate-400">{label}</p><p className="mt-0.5 text-sm font-black text-slate-900">{value}</p></div>; }
 function Message({ value }: { value: string }) { return value ? <p className="rounded-2xl bg-violet-50 p-3 text-sm font-bold leading-6 text-violet-800">{value}</p> : null; }
 function formatBytes(bytes: number) { if (bytes < 1024) return `${bytes} B`; if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`; if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`; return `${(bytes / 1024 ** 3).toFixed(1)} GB`; }
 function formatDate(timestamp: number) { return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "short", day: "numeric" }).format(new Date(timestamp)); }
@@ -424,6 +430,7 @@ function preferenceToken(key: string) { return `preference:${key}`; }
 function sessionToken(key: string) { return `session:${key}`; }
 function stageLabel(stage: AssignmentProject["stage"]) { return { setup: "설정", topic: "주제 선정", research: "자료 조사", plan: "계획", draft: "초고", final: "완성본" }[stage]; }
 function calendarTypeLabel(type: CalendarEvent["type"]) { return { deadline: "마감일", presentation: "발표", exam: "시험", checkpoint: "중간 점검", todo: "할 일" }[type]; }
+function assignmentStageHref(stage: AssignmentProject["stage"]) { return { setup: "/assignment/setup", topic: "/assignment/topic", research: "/assignment/inquiry", plan: "/assignment/workspace", draft: "/assignment/draft", final: "/assignment/final" }[stage]; }
 function preferenceLabel(key: string) {
   const labels: Record<string, string> = {
     "assessment-theme": "화면 테마",
