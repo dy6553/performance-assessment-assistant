@@ -28,8 +28,9 @@
 ## 테스트 결과
 
 - Node 테스트: 7개 통과
-- TypeScript, ESLint, Next.js Production build: 배포 빌드에서 최종 확인
-- Production 모바일 UI와 작업별 진로 선택: 배포 후 확인
+- GitHub/Vercel Production build: 성공
+- Vercel 배포 상태: READY
+- 공개 경로 응답 및 로그인 보호 경로 리다이렉트: 정상
 
 ## 알려진 제한사항
 
@@ -37,5 +38,6 @@
 
 ## 배포 결과
 
-- GitHub 최종 commit SHA: 배포 커밋에 기록
-- Vercel Production 상태 및 URL: 배포 완료 후 GitHub/Vercel 기록으로 확인
+- 기능 구현 commit SHA: `83c567ad3853d0542b461addd990d22dddb863ae`
+- Vercel Production 상태: READY
+- Production URL: `https://wanhee-two.vercel.app`
