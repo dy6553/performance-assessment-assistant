@@ -12,6 +12,7 @@ import { EncryptedSyncRuntime } from "@/components/encrypted-sync-runtime";
 import { PreferenceRuntime } from "@/components/preference-runtime";
 import { SchoolDataScopeGuard } from "@/components/school-data-scope-guard";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { RoutePreloadRuntime } from "@/components/route-preload-runtime";
 import { getAdminContext } from "@/features/admin/server/auth";
 import { ACCESS_COOKIE, SCHOOL_SCOPE_COOKIE } from "@/lib/supabase/auth-cookies";
 import { getAuthenticatedUser } from "@/lib/supabase/server/auth";
@@ -64,7 +65,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html lang="ko" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: preferenceBootScript }} /></head>
       <body data-local-owner-id={authenticatedUser?.id ?? ""}>
-        <ServiceWorkerRegister />\n        <RoutePreloadRuntime />
+        <ServiceWorkerRegister />
+        <RoutePreloadRuntime />
         <LocalDataBoundary ownerId={authenticatedUser?.id ?? null}>
           <PreferenceRuntime />
           <SchoolDataScopeGuard scope={dataScope} />
