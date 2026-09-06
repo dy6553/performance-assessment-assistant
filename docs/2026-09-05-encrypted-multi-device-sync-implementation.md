@@ -59,3 +59,13 @@ IndexedDB의 수행평가 프로젝트·주제·조사·초안·완성본, AI �
 - `20260906110000_complete_encrypted_file_sync.sql`과 `20260906120000_harden_encrypted_sync_rls.sql`을 두 Supabase Production 프로젝트에 실제 적용했다.
 - 네 동기화 테이블에 계정 소유자 RLS를 명시하고, 모든 동기화 RPC의 `anon` 실행권을 제거했다.
 - 타입 검사, 전체 7개 단위 테스트, Next.js Production build가 통과했다. 파일 암복호화 왕복과 ciphertext 변조 거부를 테스트한다.
+
+
+## 2026-09-06 Production 최종 결과
+
+- 기능 구현 commit SHA: `cec4e0e4dfa63d832de118d680103b95e2dc92fa`
+- Vercel Production deployment: `dpl_Ac56WMRAsVFRhpM9zUuCC4ckKeWB`
+- 상태: READY
+- Production URL: https://wanhee-two.vercel.app
+- 실제 URL 확인: 홈 HTTP 200, 보호 API 비로그인 차단 확인
+- 이 문서를 포함한 최종 문서 commit SHA는 GitHub `main`의 이 파일 revision이며 최종 보고서에 함께 기록한다.
