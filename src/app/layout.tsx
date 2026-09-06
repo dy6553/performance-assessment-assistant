@@ -3,8 +3,7 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { AiRequestProgress } from "@/components/ai-request-progress";
-import { AiAssistant } from "@/components/ai-assistant";
-import { AiStageActions } from "@/components/ai-stage-actions";
+import { DeferredAiTools } from "@/components/deferred-ai-tools";
 import { CalendarReminders } from "@/components/calendar-reminders";
 import { AppShell } from "@/components/app-shell";
 import { LocalDataBoundary } from "@/components/local-data-boundary";
@@ -74,8 +73,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <CalendarReminders />
           <EncryptedSyncRuntime enabled={Boolean(authenticatedUser)} />
           <AppShell isAdmin={isAdmin} signedIn={Boolean(authenticatedUser)}>{children}</AppShell>
-          <AiStageActions />
-          <AiAssistant />
+          <DeferredAiTools />
         </LocalDataBoundary>
       </body>
     </html>
