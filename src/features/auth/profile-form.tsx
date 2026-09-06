@@ -16,7 +16,6 @@ export function ProfileForm({
   desiredMajor,
   desiredCareer,
   careerNotes,
-  careerUseDefault,
 }: {
   nickname: string;
   schoolName: string;
@@ -25,7 +24,6 @@ export function ProfileForm({
   desiredMajor: string;
   desiredCareer: string;
   careerNotes: string;
-  careerUseDefault: boolean;
 }) {
   const router = useRouter();
   const [state, action, pending] = useActionState(saveProfileAction, initialState);
@@ -72,7 +70,7 @@ export function ProfileForm({
         <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-600">진로 관련 정보</p>
         <h3 className="mt-2 text-lg font-black text-violet-950">수행평가에 참고할 진로 정보</h3>
         <p className="mt-2 text-xs font-semibold leading-5 text-violet-700">
-          입력은 선택 사항입니다. 반영을 켜면 AI가 주제 추천·작성·수정·검증에서 자연스럽게 연결 가능한 경우에만 참고합니다. 교사 안내와 평가기준이 항상 우선합니다.
+          입력은 선택 사항입니다. 저장한 뒤 각 수행평가 작업을 시작할 때 진로 정보 반영 여부를 직접 선택할 수 있습니다.
         </p>
 
         <div className="mt-4 space-y-4">
@@ -96,13 +94,7 @@ export function ProfileForm({
             <textarea className={`${inputClass} min-h-28 resize-y`} defaultValue={careerNotes} maxLength={1500} name="careerNotes" placeholder="관심 있는 세부 분야, 해 보고 싶은 탐구, 진로와 연결하고 싶은 방향 등을 적어 주세요." />
           </label>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-white p-4">
-            <input className="mt-1 size-4 accent-violet-700" defaultChecked={careerUseDefault} name="careerUseDefault" type="checkbox" />
-            <span>
-              <span className="block text-sm font-black text-slate-900">AI 수행평가 작업에 진로 정보 반영</span>
-              <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">켜면 수행평가 주제 추천, 작성 전략, 초고·완성본 수정, 검증, AI Chat에서 적합한 경우에만 참고합니다.</span>
-            </span>
-          </label>
+          <p className="rounded-2xl border border-violet-200 bg-white p-4 text-xs font-bold leading-6 text-violet-800">진로 정보 사용 여부는 계정 설정이 아니라 새 수행평가의 ‘진로 연계 O / X’에서 작업별로 선택합니다.</p>
         </div>
       </section>
 

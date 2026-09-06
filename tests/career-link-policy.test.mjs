@@ -11,7 +11,8 @@ test("per-assignment X overrides an account default of ON", () => {
   assert.equal(resolveCareerLinkUsage(false, true), false);
 });
 
-test("legacy null selection falls back to the account default", () => {
-  assert.equal(resolveCareerLinkUsage(null, true), true);
+test("an unselected assignment never enables career linking from an account default", () => {
+  assert.equal(resolveCareerLinkUsage(null, true), false);
   assert.equal(resolveCareerLinkUsage(null, false), false);
+  assert.equal(resolveCareerLinkUsage(undefined, true), false);
 });

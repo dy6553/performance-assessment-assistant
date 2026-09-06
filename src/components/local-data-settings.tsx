@@ -37,6 +37,8 @@ const SESSION_ITEMS = [
   ["assessment-ai-chat-v1", "현재 AI 도우미 임시 대화"],
 ] as const;
 
+const APP_SETTINGS_TOKEN = "preference:all";
+
 type PreferenceEntry = { key: string; value: string; bytes: number };
 type SessionEntry = { key: string; label: string; value: string; bytes: number };
 
@@ -92,7 +94,7 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
         ...chats.map((row) => chatToken(row.key)),
         ...events.map((event) => calendarToken(event.id)),
         ...files.map((file) => fileToken(file.key)),
-        ...preferences.map((entry) => preferenceToken(entry.key)),
+        ...(preferences.length ? [APP_SETTINGS_TOKEN] : []),
         ...sessions.map((entry) => sessionToken(entry.key)),
       ];
 
@@ -189,7 +191,7 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
       const selectedChats = chatRows.filter((row) => selectedIds.includes(chatToken(row.key)) && !selectedProjectIds.includes(row.assignmentId));
       const selectedCalendarIds = calendarEvents.filter((event) => selectedIds.includes(calendarToken(event.id))).map((event) => event.id);
       const selectedFiles = fileRows.filter((file) => selectedIds.includes(fileToken(file.key)) && !selectedProjectIds.includes(file.assignmentId));
-      const selectedPreferences = preferenceRows.filter((entry) => selectedIds.includes(preferenceToken(entry.key)));
+      const selectedPreferences = selectedIds.includes(APP_SETTINGS_TOKEN) ? preferenceRows : [];
       const selectedSessions = sessionRows.filter((entry) => selectedIds.includes(sessionToken(entry.key)));
 
       await Promise.all(selectedProjectIds.map((projectId) => deleteAssignmentProject(ownerId, projectId)));
@@ -280,7 +282,7 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
     ...chatRows.map((row) => chatToken(row.key)),
     ...calendarEvents.map((event) => calendarToken(event.id)),
     ...fileRows.map((file) => fileToken(file.key)),
-    ...preferenceRows.map((entry) => preferenceToken(entry.key)),
+    ...(preferenceRows.length ? [APP_SETTINGS_TOKEN] : []),
     ...sessionRows.map((entry) => sessionToken(entry.key)),
   ];
   const projectTitle = (projectId: string) => projectRows.find((row) => row.id === projectId)?.title || projectRows.find((row) => row.id === projectId)?.subject || "연결 프로젝트";
@@ -289,19 +291,28 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
 
   return (
     <div className="mb-6 space-y-4">
-      <Panel title="기기 저장 한도와 휴지통" description="휴지통 문서는 7일 동안 복원할 수 있습니다. 기간이 지난 문서는 이 화면을 열 때 정리합니다. 다운로드 폴더 파일은 파일 앱에서 관리해 주세요.">
-        <label className="block">저장 한도 (MB)
-          <input className="m-2 min-h-12 w-28 rounded-xl border px-3" type="number" min="50" max="2000" value={limit} onChange={event => setLimit(Number(event.target.value))} />
-        </label>
-        <button className={secondaryButton} type="button" onClick={() => {
-          try { setStorageLimitMB(limit); setMessage("저장 한도를 변경했습니다."); }
-          catch (error) { setMessage(error instanceof Error ? error.message : "한도를 확인해 주세요."); }
-        }}>한도 저장</button>
+      <Panel title="저장 한도 · 휴지통" description="저장 한도와 최근 삭제한 수행평가를 한곳에서 관리합니다. 휴지통 자료는 7일 뒤 자동 정리됩니다.">
+        <div className="flex flex-wrap items-end gap-2 rounded-2xl bg-slate-50 p-3">
+          <label className="min-w-0 flex-1 text-xs font-black text-slate-600">저장 한도 (MB)
+            <input className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-base font-black text-slate-900" type="number" min="50" max="2000" value={limit} onChange={event => setLimit(Number(event.target.value))} />
+          </label>
+          <button className={primaryButton} type="button" onClick={() => {
+            try { setStorageLimitMB(limit); setMessage("저장 한도를 변경했습니다."); }
+            catch (error) { setMessage(error instanceof Error ? error.message : "한도를 확인해 주세요."); }
+          }}>저장</button>
+        </div>
         {usage !== null && usage >= limit * 1024 ** 2 * 0.8 ? <p role="status">저장 한도의 80% 이상 사용 중입니다. 자료를 백업하고 정리해 주세요.</p> : null}
-        {trash.map(row => <div key={row.key} className="mt-3 flex flex-wrap items-center gap-3">
-          <span>{row.title || "수행평가"} · 휴지통</span>
-          <button className={secondaryButton} type="button" onClick={() => void restoreAssignment(getConfiguredOwnerId(), row.id).then(refresh).catch(() => setMessage("복원하지 못했습니다. 다시 시도해 주세요."))}>복원</button>
-        </div>)}
+        <details className="mt-3 rounded-2xl border border-slate-200 bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-black text-slate-700">
+            <span>휴지통</span><span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">{trash.length}개</span>
+          </summary>
+          <div className="border-t border-slate-100 px-4 pb-4">
+            {trash.length ? trash.map(row => <div key={row.key} className="mt-3 flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate text-sm font-bold text-slate-700">{row.title || "수행평가"}</span>
+              <button className={tinyButton} type="button" onClick={() => void restoreAssignment(getConfiguredOwnerId(), row.id).then(refresh).catch(() => setMessage("복원하지 못했습니다. 다시 시도해 주세요."))}>복원</button>
+            </div>) : <p className="pt-4 text-sm font-semibold text-slate-400">휴지통이 비어 있습니다.</p>}
+          </div>
+        </details>
       </Panel>
       <Panel title="현재 계정의 이 기기 저장 데이터" description="수행평가 작성 내용과 AI 작업 기록은 이 기기의 IndexedDB에 저장됩니다. 업로드 원본은 OPFS를 우선 사용하고 지원하지 않는 환경에서는 IndexedDB Blob으로 보관합니다.">
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
@@ -309,7 +320,7 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
           <Stat label="AI 대화" value={`${chatRows.length}개`} />
           <Stat label="캘린더 일정" value={`${calendarEvents.length}개`} />
           <Stat label="업로드 원본" value={`${fileRows.length}개`} />
-          <Stat label="앱 설정" value={`${preferenceRows.length}개`} />
+          <Stat label="앱 설정" value={preferenceRows.length ? `1개 묶음 · ${preferenceRows.length}개 설정` : "0개"} />
           <Stat label="임시 작업 상태" value={`${sessionRows.length}개`} />
           <Stat label="브라우저 사용량" value={usage === null ? "확인 불가" : formatBytes(usage)} />
           <Stat label="브라우저 할당량" value={quota === null ? "확인 불가" : formatBytes(quota)} />
@@ -321,7 +332,7 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
         </div>
       </Panel>
 
-      <Panel title="데이터를 골라서 삭제" description="프로젝트·AI 대화·일정·파일·앱 설정·임시 작업 상태를 각각 선택합니다. 체크하지 않은 항목은 삭제하지 않습니다.">
+      <Panel title="저장 데이터 관리" description="종류를 눌러 필요한 항목만 펼친 뒤 선택하세요. 선택하지 않은 자료는 그대로 유지됩니다.">
         <div className="mb-4 flex flex-wrap gap-2">
           <button className={smallButton} disabled={!allIds.length} onClick={() => setSelectedIds(allIds)} type="button">전체 선택</button>
           <button className={smallButton} disabled={!selectedIds.length} onClick={() => setSelectedIds([])} type="button">선택 해제</button>
@@ -360,10 +371,10 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
           ))}
         </SelectionSection>
 
-        <SelectionSection title="앱 설정" count={preferenceRows.length} onSelectAll={() => selectIds(preferenceRows.map((entry) => preferenceToken(entry.key)))}>
-          {preferenceRows.map((entry) => (
-            <CheckRow checked={selectedIds.includes(preferenceToken(entry.key))} description={`${preferenceDescription(entry.key)} · ${formatBytes(entry.bytes)}`} href="/settings" key={entry.key} label={preferenceLabel(entry.key)} onChange={() => toggle(preferenceToken(entry.key))} />
-          ))}
+        <SelectionSection title="앱 설정" count={preferenceRows.length ? 1 : 0} onSelectAll={() => selectIds(preferenceRows.length ? [APP_SETTINGS_TOKEN] : [])}>
+          {preferenceRows.length ? (
+            <CheckRow checked={selectedIds.includes(APP_SETTINGS_TOKEN)} description={`${preferenceRows.length}개 화면·동작·기본값 설정 · ${formatBytes(preferenceRows.reduce((sum, entry) => sum + entry.bytes, 0))}`} href="/settings" label="앱 설정 전체" onChange={() => toggle(APP_SETTINGS_TOKEN)} />
+          ) : null}
         </SelectionSection>
 
         <SelectionSection title="현재 탭 임시 작업 상태" count={sessionRows.length} onSelectAll={() => selectIds(sessionRows.map((entry) => sessionToken(entry.key)))}>
@@ -391,13 +402,16 @@ export function LocalDataSettings({ mode }: { mode: "storage" | "backup" }) {
 
 function SelectionSection({ title, count, onSelectAll, children }: { title: string; count: number; onSelectAll: () => void; children: ReactNode }) {
   return (
-    <section className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-      <div className="flex items-center justify-between gap-3 bg-slate-50 px-4 py-3">
-        <h3 className="text-sm font-black text-slate-800">{title} <span className="text-slate-400">{count}</span></h3>
-        <button className={tinyButton} disabled={!count} onClick={onSelectAll} type="button">이 항목 전체 선택</button>
+    <details className="group mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 bg-slate-50 px-4 py-3">
+        <h3 className="text-sm font-black text-slate-800">{title} <span className="ml-1 text-slate-400">{count}</span></h3>
+        <span className="text-xs font-black text-slate-400 group-open:hidden">보기 ＋</span>
+        <span className="hidden text-xs font-black text-slate-400 group-open:inline">접기 －</span>
+      </summary>
+      <div className="border-t border-slate-100">
+        {count ? <><div className="flex justify-end bg-white px-4 py-2"><button className={tinyButton} onClick={onSelectAll} type="button">전체 선택</button></div><div className="divide-y divide-slate-100">{children}</div></> : <p className="px-4 py-4 text-sm font-semibold text-slate-400">저장된 항목이 없습니다.</p>}
       </div>
-      {count ? <div className="divide-y divide-slate-100">{children}</div> : <p className="px-4 py-4 text-sm font-semibold text-slate-400">저장된 항목이 없습니다.</p>}
-    </section>
+    </details>
   );
 }
 
@@ -426,44 +440,10 @@ function projectToken(id: string) { return `project:${id}`; }
 function chatToken(key: string) { return `chat:${key}`; }
 function calendarToken(id: string) { return `calendar:${id}`; }
 function fileToken(key: string) { return `file:${key}`; }
-function preferenceToken(key: string) { return `preference:${key}`; }
 function sessionToken(key: string) { return `session:${key}`; }
 function stageLabel(stage: AssignmentProject["stage"]) { return { setup: "설정", topic: "주제 선정", research: "자료 조사", plan: "계획", draft: "초고", final: "완성본" }[stage]; }
 function calendarTypeLabel(type: CalendarEvent["type"]) { return { deadline: "마감일", presentation: "발표", exam: "시험", checkpoint: "중간 점검", todo: "할 일" }[type]; }
 function assignmentStageHref(stage: AssignmentProject["stage"]) { return { setup: "/assignment/setup", topic: "/assignment/topic", research: "/assignment/inquiry", plan: "/assignment/workspace", draft: "/assignment/draft", final: "/assignment/final" }[stage]; }
-function preferenceLabel(key: string) {
-  const labels: Record<string, string> = {
-    "assessment-theme": "화면 테마",
-    "assessment-font-size": "글자 크기",
-    "assessment-reduce-motion": "모션 줄이기",
-    "assessment-high-contrast": "고대비 화면",
-    "assessment-large-controls": "큰 조작 요소",
-    "assessment-haptics": "진동 설정",
-    "assessment-notifications": "알림 설정",
-    "assessment-data-saver": "데이터 절약 설정",
-    "assessment-fast-response": "빠른 반응 설정",
-    "assessment-keep-awake": "화면 켜짐 유지",
-    "assessment-start-page": "시작 화면",
-    "assessment-default-curriculum": "기본 교육과정",
-    "assessment-default-school-level": "기본 학교급",
-    "assessment-default-grade": "기본 학년",
-    "assessment-default-assignment-type": "기본 수행평가 유형",
-    "assessment-file-name-format": "파일명 형식",
-    "assessment-file-name-prefix": "파일명 앞글자",
-    "assessment-file-name-separator": "파일명 구분자",
-    "assessment-file-name-example": "파일명 예시",
-    "assessment-cache-cleanup-days": "캐시 자동 정리 기간",
-    "assessment-cache-limit-mb": "캐시 최대 용량",
-  };
-  return labels[key] ?? "앱 로컬 설정";
-}
-function preferenceDescription(key: string) {
-  if (key.includes("default-")) return "새 수행평가 기본값";
-  if (key.includes("file-name")) return "파일 저장 이름 설정";
-  if (key.includes("cache")) return "저장공간 자동 정리 설정";
-  if (key.includes("theme") || key.includes("font") || key.includes("contrast") || key.includes("motion")) return "화면 표시 설정";
-  return "앱 동작 설정";
-}
 const primaryButton = "min-h-11 rounded-xl bg-violet-700 px-4 text-sm font-black text-white disabled:opacity-50";
 const secondaryButton = "inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 disabled:opacity-50";
 const smallButton = "inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 disabled:opacity-40";

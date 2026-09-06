@@ -37,7 +37,7 @@ export default async function AccountPage() {
           사용자 정보와 로그인
         </h1>
         <p className="mt-3 text-sm font-semibold leading-7 text-slate-600 sm:text-base">
-          학교·나이와 진로 정보를 관리하고, 원하는 경우 수행평가 AI 작업에 진로 방향을 참고시킬 수 있습니다.
+          학교·나이와 진로 정보를 저장합니다. 진로 반영 여부는 수행평가 작업을 시작할 때마다 선택합니다.
         </p>
       </header>
 
@@ -51,7 +51,6 @@ export default async function AccountPage() {
             age={profile?.age ?? null}
             careerInterest={profile?.career_interest ?? ""}
             careerNotes={profile?.career_notes ?? ""}
-            careerUseDefault={profile?.career_use_default ?? false}
             desiredCareer={profile?.desired_career ?? ""}
             desiredMajor={profile?.desired_major ?? ""}
             nickname={nickname}
@@ -76,20 +75,17 @@ export default async function AccountPage() {
           ) : null}
 
           <section className="rounded-[2rem] border border-violet-200 bg-violet-50/70 p-6 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">진로 연계</p>
-            <h2 className="mt-3 text-lg font-black text-violet-950">수행평가 진로 반영</h2>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">진로 정보</p>
+            <h2 className="mt-3 text-lg font-black text-violet-950">저장된 진로 정보</h2>
             <p className="mt-3 text-sm font-semibold leading-6 text-violet-700">
               {hasCareerInfo
-                ? profile?.career_use_default
-                  ? "진로 정보 반영이 켜져 있습니다. AI가 교과와 평가기준에 맞는 경우 주제·탐구 방향·표현에 자연스럽게 참고합니다."
-                  : "진로 정보는 저장되어 있지만 현재 AI 반영은 꺼져 있습니다."
+                ? "진로 정보가 저장되어 있습니다. 실제 반영 여부는 새 수행평가 작업에서 O 또는 X로 선택합니다."
                 : "진로 정보를 입력하면 수행평가 주제와 탐구 방향을 진로와 자연스럽게 연결할 수 있습니다."}
             </p>
             <dl className="mt-5 space-y-3 rounded-2xl bg-white p-4 text-sm">
               <InfoRow label="관심 분야" value={profile?.career_interest || "미등록"} />
               <InfoRow label="희망 전공" value={profile?.desired_major || "미등록"} />
               <InfoRow label="희망 진로" value={profile?.desired_career || "미등록"} />
-              <InfoRow label="AI 반영" value={profile?.career_use_default ? "사용" : "사용 안 함"} />
             </dl>
           </section>
 

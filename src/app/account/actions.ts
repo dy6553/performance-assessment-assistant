@@ -31,7 +31,6 @@ export async function saveProfileAction(
   const desiredMajor = String(formData.get("desiredMajor") ?? "").trim();
   const desiredCareer = String(formData.get("desiredCareer") ?? "").trim();
   const careerNotes = String(formData.get("careerNotes") ?? "").trim();
-  const careerUseDefault = formData.get("careerUseDefault") === "on";
 
   if (nickname.length < 1 || nickname.length > 30) {
     return { message: "닉네임은 1~30자로 입력해 주세요." };
@@ -56,7 +55,7 @@ export async function saveProfileAction(
       desiredMajor,
       desiredCareer,
       careerNotes,
-      careerUseDefault,
+      careerUseDefault: false,
     });
   } catch {
     return { message: "사용자 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." };
@@ -66,9 +65,7 @@ export async function saveProfileAction(
   revalidatePath("/account");
 
   return {
-    message: careerUseDefault
-      ? "사용자 정보와 진로 정보를 저장했습니다. 앞으로 AI 수행평가 작업에서 적합할 때 진로 정보를 참고합니다."
-      : "사용자 정보와 진로 정보를 저장했습니다.",
+    message: "사용자 정보와 진로 정보를 저장했습니다. 진로 반영 여부는 각 수행평가 작업에서 선택할 수 있습니다.",
     success: true,
     schoolScopeChanged: (before?.school_key ?? "") !== (after?.school_key ?? ""),
   };
