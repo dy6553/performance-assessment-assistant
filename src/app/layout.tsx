@@ -64,7 +64,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html lang="ko" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: preferenceBootScript }} /></head>
       <body data-local-owner-id={authenticatedUser?.id ?? ""}>
-        <ServiceWorkerRegister />
+        <ServiceWorkerRegister />\n        <RoutePreloadRuntime />
         <LocalDataBoundary ownerId={authenticatedUser?.id ?? null}>
           <PreferenceRuntime />
           <SchoolDataScopeGuard scope={dataScope} />
