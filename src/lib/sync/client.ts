@@ -2,7 +2,9 @@
 
 import { idbDelete, idbGet, idbGetAll, idbPut, type StoreName } from "@/lib/local-data/db";
 import {
+  decryptBytes,
   decryptJson,
+  encryptBytes,
   encryptJson,
   exportPublicKey,
   generateDeviceKeyPair,
@@ -12,6 +14,7 @@ import {
   unwrapSyncKey,
   wrapSyncKey,
 } from "./crypto";
+import { readLocalFile, restoreLocalFile, type LocalFileMeta } from "@/lib/local-data/files";
 import type { ConflictRow, DeviceInfo, SyncQueueItem, SyncRecord, SyncStatus } from "./types";
 
 const DEVICE_KEY = "device";
@@ -23,6 +26,7 @@ const SYNCABLE = new Set<StoreName>(["assignments", "chats", "calendar", "files"
 type CryptoRow = { key: string; value: CryptoKey | CryptoKeyPair | string };
 type StateRow = { key: string; value: string | number };
 type DeviceRow = { key: string; deviceId: string; deviceName: string; platform: string };
+type FileSyncRow = { fileId: string; recordId: string; version: number; storagePath: string; fileIv: string; contentHash: string; byteSize: number; mimeType: string; deletedAt: string | null };
 
 function emit(status: SyncStatus, detail?: string, lastSyncAt?: string) {
   window.dispatchEvent(new CustomEvent("assessment-sync-state", { detail: { status, detail, lastSyncAt } }));
@@ -168,7 +172,10 @@ async function pushQueue(deviceId: string) {
     };
     await idbPut("syncConflicts", conflict);
   }
-  if (response.conflicts.length) emit("conflict", `${response.conflicts.length}개의 충돌을 확인해 주세요.`);
+  if (response.conflicts.length) {
+    window.dispatchEvent(new CustomEvent("assessment-sync-conflicts-changed"));
+    emit("conflict", `${response.conflicts.length}개의 충돌을 확인해 주세요.`);
+  }
 }
 
 async function pullRemote(deviceId: string, key: CryptoKey) {
@@ -188,6 +195,7 @@ async function pullRemote(deviceId: string, key: CryptoKey) {
         remote,
         detectedAt: new Date().toISOString(),
       } satisfies ConflictRow);
+      window.dispatchEvent(new CustomEvent("assessment-sync-conflicts-changed"));
       continue;
     }
     const state = await idbGet<StateRow>("syncState", remote.recordId);
@@ -202,6 +210,62 @@ async function pullRemote(deviceId: string, key: CryptoKey) {
     await idbPut("syncState", { key: remote.recordId, value: remote.version });
   }
   await idbPut("syncState", { key: CURSOR_KEY, value: response.cursor });
+}
+
+async function uploadEncryptedFile(deviceId: string, storagePath: string, ciphertext: ArrayBuffer) {
+  const response = await fetch("/api/sync/file", {
+    method: "PUT", credentials: "same-origin",
+    headers: { "Content-Type": "application/octet-stream", "x-sync-device-id": deviceId, "x-sync-storage-path": storagePath },
+    body: ciphertext,
+  });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({ error: "FILE_UPLOAD_FAILED" }))).error);
+}
+
+async function downloadEncryptedFile(deviceId: string, storagePath: string) {
+  const query = new URLSearchParams({ deviceId, storagePath });
+  const response = await fetch(`/api/sync/file?${query}`, { credentials: "same-origin", cache: "no-store" });
+  if (!response.ok) throw new Error("FILE_DOWNLOAD_FAILED");
+  return response.arrayBuffer();
+}
+
+async function syncFiles(deviceId: string, key: CryptoKey) {
+  const localFiles = await idbGetAll<LocalFileMeta>("files");
+  for (const meta of localFiles) {
+    const blob = await readLocalFile(meta);
+    if (!blob) continue;
+    const bytes = await blob.arrayBuffer();
+    const contentHash = await sha256(bytes);
+    const uploadedHash = await idbGet<StateRow>("syncState", `file-hash:${meta.key}`);
+    if (uploadedHash?.value === contentHash) continue;
+    const state = await api<{ exists: boolean; version: number; contentHash: string | null }>("file-state", { deviceId, fileId: meta.key });
+    if (state.contentHash === contentHash) {
+      await idbPut("syncState", { key: `file-hash:${meta.key}`, value: contentHash });
+      continue;
+    }
+    const version = Number(state.version || 0) + 1;
+    const aad = `file:${meta.key}|${version}`;
+    const encrypted = await encryptBytes(key, bytes, aad);
+    const prepared = await api<{ storagePath: string }>("file-prepare", { deviceId, fileId: meta.key, version });
+    await uploadEncryptedFile(deviceId, prepared.storagePath, encrypted.ciphertext);
+    await api("file-commit", {
+      deviceId, fileId: meta.key, recordId: `files:${meta.key}`, version, storagePath: prepared.storagePath,
+      fileIv: encrypted.iv, contentHash, byteSize: bytes.byteLength, mimeType: meta.mimeType,
+    });
+    await idbPut("syncState", { key: `file-hash:${meta.key}`, value: contentHash });
+  }
+
+  const remote = await api<{ files: FileSyncRow[] }>("file-list", { deviceId });
+  for (const file of remote.files) {
+    if (file.deletedAt) continue;
+    const known = await idbGet<StateRow>("syncState", `file-hash:${file.fileId}`);
+    if (known?.value === file.contentHash) continue;
+    const meta = await idbGet<LocalFileMeta>("files", file.fileId);
+    if (!meta) continue; // Encrypted metadata record will be pulled before the next retry.
+    const ciphertext = await downloadEncryptedFile(deviceId, file.storagePath);
+    const plaintext = await decryptBytes(key, ciphertext, file.fileIv, `file:${file.fileId}|${file.version}`);
+    await restoreLocalFile({ ...meta, mimeType: file.mimeType, size: file.byteSize }, new Blob([plaintext], { type: file.mimeType }));
+    await idbPut("syncState", { key: `file-hash:${file.fileId}`, value: file.contentHash });
+  }
 }
 
 let timer: number | null = null;
@@ -224,6 +288,7 @@ export async function syncNow() {
     await shareKeyWithPendingDevices(device.deviceId, key);
     await pushQueue(device.deviceId);
     await pullRemote(device.deviceId, key);
+    await syncFiles(device.deviceId, key);
     const now = new Date().toISOString();
     await api("touch", { deviceId: device.deviceId, lastSyncAt: now });
     emit("idle", undefined, now);
@@ -243,6 +308,10 @@ export async function revokeDevice(targetDeviceId: string) {
   const { device } = await ensureDevice();
   await api("revoke", { deviceId: device.deviceId, targetDeviceId });
   return listDevices();
+}
+
+export async function listConflicts() {
+  return idbGetAll<ConflictRow>("syncConflicts");
 }
 
 export async function resolveConflict(recordId: string, choice: "local" | "remote" | "both") {
@@ -270,6 +339,7 @@ export async function resolveConflict(recordId: string, choice: "local" | "remot
     await idbPut("syncState", { key: recordId, value: conflict.remote.version });
   }
   await idbDelete("syncConflicts", recordId);
+  window.dispatchEvent(new CustomEvent("assessment-sync-conflicts-changed"));
   scheduleSync(0);
 }
 

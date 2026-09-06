@@ -61,6 +61,16 @@ export async function POST(request: Request) {
       case "pull": result = await rpc("sync_pull_records", { p_device_id: deviceId, p_cursor: body.cursor }, token); break;
       case "touch": result = await rpc("sync_touch_device", { p_device_id: deviceId, p_last_sync_at: body.lastSyncAt }, token); break;
       case "revoke": result = await rpc("sync_revoke_device", { p_device_id: deviceId, p_target_device_id: body.targetDeviceId }, token); break;
+      case "file-state": result = await rpc("sync_get_file_state", { p_device_id: deviceId, p_file_id: body.fileId }, token); break;
+      case "file-prepare": result = await rpc("sync_prepare_file_upload", { p_device_id: deviceId, p_file_id: body.fileId, p_version: body.version }, token); break;
+      case "file-list": result = await rpc("sync_list_files", { p_device_id: deviceId }, token); break;
+      case "file-commit":
+        result = await rpc("sync_commit_file", {
+          p_device_id: deviceId, p_file_id: body.fileId, p_record_id: body.recordId,
+          p_version: body.version, p_storage_path: body.storagePath, p_file_iv: body.fileIv,
+          p_content_hash: body.contentHash, p_byte_size: body.byteSize, p_mime_type: body.mimeType,
+        }, token);
+        break;
       default: return NextResponse.json({ error: "지원하지 않는 동기화 작업입니다." }, { status: 400 });
     }
     const normalized = Array.isArray(result) && result.length === 1 ? result[0] : result;

@@ -106,6 +106,30 @@ export async function readLocalFile(meta: LocalFileMeta): Promise<Blob | null> {
   }
 }
 
+/** Restores bytes received from encrypted sync without changing the stable file key. */
+export async function restoreLocalFile(meta: LocalFileMeta, blob: Blob): Promise<void> {
+  const storageManager = navigator.storage as StorageManagerWithDirectory;
+  if (storageManager?.getDirectory) {
+    try {
+      const root = await storageManager.getDirectory();
+      const assignments = await root.getDirectoryHandle("assignments", { create: true });
+      const owner = await assignments.getDirectoryHandle(meta.ownerId, { create: true });
+      const project = await owner.getDirectoryHandle(meta.assignmentId, { create: true });
+      const safeName = meta.name.replace(/[^0-9A-Za-z가-힣._-]+/g, "_").slice(0, 140) || "upload";
+      const fileName = `${meta.id}-${safeName}`;
+      const handle = await project.getFileHandle(fileName, { create: true });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      await idbPut("files", { ...meta, blob: undefined, storage: "opfs", localPath: `/assignments/${meta.ownerId}/${meta.assignmentId}/${fileName}` });
+      return;
+    } catch {
+      // IndexedDB Blob fallback remains available on browsers without OPFS.
+    }
+  }
+  await idbPut("files", { ...meta, storage: "indexeddb", localPath: `indexeddb://${meta.key}`, blob });
+}
+
 export async function deleteLocalFile(meta: LocalFileMeta) {
   if (meta.storage === "opfs") {
     try {

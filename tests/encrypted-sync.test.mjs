@@ -32,3 +32,13 @@ test("device RSA-OAEP envelope transfers the account sync key", async () => {
   const encrypted = await cryptoModule.encryptJson(syncKey, { ok: true }, "key-test");
   assert.deepEqual(await cryptoModule.decryptJson(restored, encrypted.encryptedPayload, encrypted.payloadIv, "key-test"), { ok: true });
 });
+
+test("binary AES-GCM round trip rejects changed bytes", async () => {
+  const key = await cryptoModule.generateSyncKey();
+  const original = new TextEncoder().encode("encrypted file body");
+  const encrypted = await cryptoModule.encryptBytes(key, original.buffer, "file:1|1");
+  assert.deepEqual(new Uint8Array(await cryptoModule.decryptBytes(key, encrypted.ciphertext, encrypted.iv, "file:1|1")), original);
+  const changed = new Uint8Array(encrypted.ciphertext.slice(0));
+  changed[0] ^= 1;
+  await assert.rejects(() => cryptoModule.decryptBytes(key, changed.buffer, encrypted.iv, "file:1|1"));
+});

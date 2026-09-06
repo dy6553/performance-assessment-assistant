@@ -54,6 +54,24 @@ export async function decryptJson<T>(
   return JSON.parse(decoder.decode(plaintext)) as T;
 }
 
+export async function encryptBytes(key: CryptoKey, value: ArrayBuffer, aad: string) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv, additionalData: encoder.encode(aad), tagLength: 128 },
+    key,
+    value,
+  );
+  return { ciphertext, iv: bytesToBase64(iv) };
+}
+
+export async function decryptBytes(key: CryptoKey, value: ArrayBuffer, iv: string, aad: string) {
+  return crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64ToBytes(iv), additionalData: encoder.encode(aad), tagLength: 128 },
+    key,
+    value,
+  );
+}
+
 export async function generateDeviceKeyPair() {
   return crypto.subtle.generateKey(
     { name: "RSA-OAEP", modulusLength: 3072, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },

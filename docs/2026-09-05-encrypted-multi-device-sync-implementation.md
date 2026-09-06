@@ -41,7 +41,7 @@ IndexedDB의 수행평가 프로젝트·주제·조사·초안·완성본, AI �
 ## 알려진 제한사항
 
 - 실제 사용자 계정 두 개/실기기 두 대의 브라우저 자동화는 테스트 계정 자격 증명이 없어 로컬 테스트에서 재현하지 못했다.
-- OPFS 원본 파일용 테이블과 Storage 정책은 적용했지만 이번 클라이언트 구현은 첨부파일 메타데이터 동기화까지만 연결되어 있다. 원본 바이너리 업로드/다운로드 연결은 후속 검증이 필요하다.
+- 실제 로그인 가능한 자동화 계정이 없어 Production의 두 독립 브라우저 로그인 시나리오는 수동 검증 대상으로 남는다.
 
 ## Production 배포
 
@@ -49,3 +49,13 @@ IndexedDB의 수행평가 프로젝트·주제·조사·초안·완성본, AI �
 - 상태: READY
 - URL: https://wanhee-two.vercel.app
 - Production 홈 HTTP 200 및 보호된 `/settings/devices` 로그인 리다이렉트 확인
+
+## 2026-09-06 후속 완성 작업
+
+- 충돌 목록과 `이 기기 버전 사용` / `다른 기기 버전 사용` / `둘 다 보관` UI를 실제 해결 함수에 연결했다.
+- OPFS/IndexedDB 원본 파일을 SHA-256으로 비교해 변경된 파일만 AES-256-GCM 암호화 후 Storage에 업로드한다.
+- 다른 기기는 암호화 파일을 내려받아 인증 태그를 검증한 뒤 동일 stable key로 OPFS에 복원하며, OPFS 미지원 시 IndexedDB Blob을 사용한다.
+- `src/app/api/sync/file/route.ts`에서 로그인 세션과 활성 device를 확인한 뒤 Storage 요청을 중계한다. Service Role 키는 사용하거나 클라이언트에 노출하지 않는다.
+- `20260906110000_complete_encrypted_file_sync.sql`과 `20260906120000_harden_encrypted_sync_rls.sql`을 두 Supabase Production 프로젝트에 실제 적용했다.
+- 네 동기화 테이블에 계정 소유자 RLS를 명시하고, 모든 동기화 RPC의 `anon` 실행권을 제거했다.
+- 타입 검사, 전체 7개 단위 테스트, Next.js Production build가 통과했다. 파일 암복호화 왕복과 ciphertext 변조 거부를 테스트한다.
