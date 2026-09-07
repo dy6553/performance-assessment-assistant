@@ -1,6 +1,7 @@
 import { topicRecommendationRequestSchema } from "@/features/assessment/schemas";
 import { applyCareerToTopicRequest, getCareerAiContext } from "@/features/assessment/server/career-context";
 import { recommendTopics } from "@/features/assessment/server/topic-service";
+import { applyTextbookProfileToTopicRequest } from "@/features/assessment/textbook-profile";
 import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
@@ -17,8 +18,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const career = await getCareerAiContext(parsed.data.careerLinked);
-    const result = await recommendTopics(applyCareerToTopicRequest(parsed.data, career));
+    const textbookRequest = applyTextbookProfileToTopicRequest(parsed.data, request.headers.get("cookie"));
+    const career = await getCareerAiContext(textbookRequest.careerLinked);
+    const result = await recommendTopics(applyCareerToTopicRequest(textbookRequest, career));
     return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return Response.json({ error: publicApiError(error, "주제를 추천하지 못했습니다.") }, { status: 502 });
