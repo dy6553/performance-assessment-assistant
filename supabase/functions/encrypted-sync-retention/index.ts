@@ -1,3 +1,4 @@
+// @ts-nocheck -- Deno Edge Function is type-checked by Supabase during deployment.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
