@@ -89,7 +89,8 @@ export function AppShell({
   isAdmin?: boolean;
 }) {
   const pathname = usePathname();
-  const historyActive = pathname === "/history" || pathname.startsWith("/history/");
+  const historyPath = "/assignment/history";
+  const historyActive = pathname === historyPath || pathname.startsWith(`${historyPath}/`);
 
   return (
     <div className="min-h-dvh text-slate-950">
@@ -138,7 +139,7 @@ export function AppShell({
                   ? "bg-violet-100 text-violet-800"
                   : "bg-slate-50 text-slate-600 hover:bg-violet-50 hover:text-violet-800"
               }`}
-              href="/history"
+              href={historyPath}
               title="최근 작업 기록"
             >
               <Icon className="size-4" name="history" />
