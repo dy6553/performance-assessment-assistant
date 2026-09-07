@@ -154,8 +154,10 @@ export function buildTextbookRequirement(profile: TextbookProfile): string {
 function appendContext(existing: string, context: string, maxLength: number): string {
   const marker = "[교과서·교육과정 반영 기준]";
   if (existing.includes(marker)) return existing.slice(0, maxLength);
-  const combined = existing.trim() ? `${existing.trim()}\n\n${context}` : context;
-  return combined.slice(0, maxLength);
+  if (context.length >= maxLength) return context.slice(0, maxLength);
+  const availableForExisting = Math.max(0, maxLength - context.length - 2);
+  const prefix = existing.trim().slice(0, availableForExisting);
+  return prefix ? `${prefix}\n\n${context}` : context;
 }
 
 function sanitizeProfile(value: unknown): TextbookProfile | null {
