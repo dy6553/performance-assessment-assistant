@@ -3,6 +3,7 @@ import { executionPlanResultSchema, researchResultSchema } from "@/features/asse
 import { applyCareerToAssignment, getCareerAiContext } from "@/features/assessment/server/career-context";
 import { generateDraft } from "@/features/assessment/server/prompted-service";
 import { generateDraftFromExecutionPlan } from "@/features/assessment/server/stage-service";
+import { applyTextbookProfileToAssignment } from "@/features/assessment/textbook-profile";
 import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
@@ -24,8 +25,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const career = await getCareerAiContext(parsed.data.assignment.careerLinked);
-    const assignment = applyCareerToAssignment(parsed.data.assignment, career);
+    const textbookAssignment = applyTextbookProfileToAssignment(parsed.data.assignment, request.headers.get("cookie"));
+    const career = await getCareerAiContext(textbookAssignment.careerLinked);
+    const assignment = applyCareerToAssignment(textbookAssignment, career);
     const result = parsed.data.research && parsed.data.plan
       ? await generateDraftFromExecutionPlan(assignment, parsed.data.analysis, parsed.data.research, parsed.data.plan)
       : await generateDraft(assignment, parsed.data.analysis);
