@@ -9,6 +9,11 @@ const CATEGORIES = [
     description: "교육과정, 학교급, 학년, 과목, 수행평가 유형을 새 작업의 기본값으로 저장합니다.",
   },
   {
+    href: "/settings/textbooks",
+    title: "내 교과서",
+    description: "교육과정, 출판사, 교과서, 단원·쪽수를 저장해 수행평가 전 과정에 자동 반영합니다.",
+  },
+  {
     href: "/settings/files",
     title: "PDF 및 파일",
     description: "결과 파일의 기본 파일명 규칙과 원하는 파일명 예시를 설정합니다.",
