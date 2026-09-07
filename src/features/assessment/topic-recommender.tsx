@@ -18,6 +18,7 @@ import type {
   TopicRecommendationRequest,
   TopicRecommendationResult,
 } from "@/features/assessment/schemas";
+import { PdfRubricUpload } from "@/features/assessment/pdf-rubric-upload";
 import { readAssignmentDefaultPreferences } from "@/lib/client-preferences";
 import { readApiResponse } from "@/lib/http/client-response";
 
@@ -222,52 +223,48 @@ export function TopicRecommender() {
           </Field>
         </div>
 
-        <div className="border-t border-slate-100 bg-violet-50/40 p-5">
-          <div className="mb-4">
-            <h3 className="font-black text-slate-950">내 관심 분야와 진로</h3>
-            <p className="mt-1 text-sm font-medium leading-6 text-slate-500">아직 진로를 정하지 않았다면 관심 있는 것만 적어도 됩니다.</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <details className="group border-t border-slate-100 bg-violet-50/40">
+          <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
+            <span>
+              <span className="block font-black text-slate-950">내 관심 분야와 진로 <span className="font-semibold text-slate-400">(선택)</span></span>
+              <span className="mt-1 block text-sm font-medium leading-6 text-slate-500">필요할 때만 펼쳐 입력하세요.</span>
+            </span>
+            <span className="text-xs font-black text-violet-600 group-open:hidden">펼치기 ＋</span>
+            <span className="hidden text-xs font-black text-violet-600 group-open:inline">접기 －</span>
+          </summary>
+          <div className="grid gap-4 border-t border-violet-100 px-5 pb-5 pt-4 sm:grid-cols-2">
             <Field label="관심 분야 (선택)">
-              <input
-                className={inputClass}
-                maxLength={500}
-                placeholder="예: 인공지능, 환경, 심리, 스포츠, 디자인"
-                value={form.interestField}
-                onChange={(event) => update("interestField", event.target.value)}
-              />
+              <input className={inputClass} maxLength={500} placeholder="예: 인공지능, 환경, 심리, 스포츠, 디자인" value={form.interestField} onChange={(event) => update("interestField", event.target.value)} />
             </Field>
-
             <Field label="가고 싶은 학과 (선택)">
-              <input
-                className={inputClass}
-                maxLength={300}
-                placeholder="예: 컴퓨터공학과, 간호학과, 경제학과"
-                value={form.desiredMajor}
-                onChange={(event) => update("desiredMajor", event.target.value)}
-              />
+              <input className={inputClass} maxLength={300} placeholder="예: 컴퓨터공학과, 간호학과, 경제학과" value={form.desiredMajor} onChange={(event) => update("desiredMajor", event.target.value)} />
             </Field>
-
             <Field label="희망 직업 (선택)">
-              <input
-                className={inputClass}
-                maxLength={300}
-                placeholder="예: 소프트웨어 개발자, 의사, 교사, 연구원"
-                value={form.desiredCareer}
-                onChange={(event) => update("desiredCareer", event.target.value)}
-              />
-            </Field>
-
-            <Field label="원하는 주제 조건 (선택)">
-              <textarea
-                className={`${inputClass} min-h-24 resize-y py-3`}
-                maxLength={2000}
-                placeholder="예: 자료를 구하기 쉬운 주제, 너무 흔하지 않은 주제, 실험 없이 조사로 가능한 주제"
-                value={form.additionalConditions}
-                onChange={(event) => update("additionalConditions", event.target.value)}
-              />
+              <input className={inputClass} maxLength={300} placeholder="예: 소프트웨어 개발자, 의사, 교사, 연구원" value={form.desiredCareer} onChange={(event) => update("desiredCareer", event.target.value)} />
             </Field>
           </div>
+        </details>
+
+        <div className="border-t border-slate-100 p-5">
+          <Field label="요청사항 (선택)">
+            <textarea
+              className={`${inputClass} min-h-28 resize-y py-3`}
+              maxLength={2000}
+              placeholder="예: 반드시 포함할 내용, 피하고 싶은 주제, 자료를 구하기 쉬운 주제, 선생님이 강조한 조건"
+              value={form.additionalConditions}
+              onChange={(event) => update("additionalConditions", event.target.value)}
+            />
+          </Field>
+        </div>
+
+        <div className="border-t border-slate-100 p-5">
+          <h3 className="font-black text-slate-950">평가기준표·수행평가 안내표 업로드 <span className="font-semibold text-slate-400">(선택)</span></h3>
+          <p className="mb-3 mt-1 text-sm font-medium leading-6 text-slate-500">PDF, JPG, PNG 또는 WebP 파일을 올리면 백엔드에서 변환하고 내용을 판독합니다.</p>
+          <PdfRubricUpload
+            disabled={loading}
+            onExtracted={(text) => update("rubricText", text)}
+            onGuideExtracted={(text) => update("teacherInstruction", text)}
+          />
         </div>
 
         <div className="grid gap-4 border-t border-slate-100 p-5 lg:grid-cols-2">
