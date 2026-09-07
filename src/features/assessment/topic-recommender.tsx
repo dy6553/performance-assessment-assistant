@@ -51,6 +51,7 @@ export function TopicRecommender() {
   const [loading, setLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState("");
+  const [careerEnabled, setCareerEnabled] = useState(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -103,6 +104,7 @@ export function TopicRecommender() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          careerLinked: careerEnabled,
           avoidTopics,
         }),
       });
@@ -129,6 +131,7 @@ export function TopicRecommender() {
       subject: form.subject,
       course: form.course,
       assignmentType: form.assignmentType,
+      careerLinked: careerEnabled,
       teacherInstruction: form.teacherInstruction,
       rubricText: form.rubricText,
       studentIdeas: [
@@ -223,27 +226,34 @@ export function TopicRecommender() {
           </Field>
         </div>
 
-        <details className="group border-t border-slate-100 bg-violet-50/40">
-          <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
-            <span>
-              <span className="block font-black text-slate-950">내 관심 분야와 진로 <span className="font-semibold text-slate-400">(선택)</span></span>
-              <span className="mt-1 block text-sm font-medium leading-6 text-slate-500">필요할 때만 펼쳐 입력하세요.</span>
-            </span>
-            <span className="text-xs font-black text-violet-600 group-open:hidden">펼치기 ＋</span>
-            <span className="hidden text-xs font-black text-violet-600 group-open:inline">접기 －</span>
-          </summary>
-          <div className="grid gap-4 border-t border-violet-100 px-5 pb-5 pt-4 sm:grid-cols-2">
-            <Field label="관심 분야 (선택)">
-              <input className={inputClass} maxLength={500} placeholder="예: 인공지능, 환경, 심리, 스포츠, 디자인" value={form.interestField} onChange={(event) => update("interestField", event.target.value)} />
-            </Field>
-            <Field label="가고 싶은 학과 (선택)">
-              <input className={inputClass} maxLength={300} placeholder="예: 컴퓨터공학과, 간호학과, 경제학과" value={form.desiredMajor} onChange={(event) => update("desiredMajor", event.target.value)} />
-            </Field>
-            <Field label="희망 직업 (선택)">
-              <input className={inputClass} maxLength={300} placeholder="예: 소프트웨어 개발자, 의사, 교사, 연구원" value={form.desiredCareer} onChange={(event) => update("desiredCareer", event.target.value)} />
-            </Field>
+        <section className="border-t border-slate-100 bg-violet-50/40 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-black text-slate-950">진로 연계</h3>
+              <p className="mt-1 text-sm font-medium leading-6 text-slate-500">O를 선택한 경우에만 진로 세부사항을 표시하고 추천에 반영합니다.</p>
+            </div>
+            <div className="grid min-w-40 grid-cols-2 gap-2" role="group" aria-label="진로 연계 선택">
+              <button type="button" aria-pressed={careerEnabled} onClick={() => setCareerEnabled(true)}
+                className={`min-h-11 rounded-xl border px-4 text-sm font-black ${careerEnabled ? "border-violet-600 bg-violet-600 text-white" : "border-slate-200 bg-white text-slate-600"}`}>O</button>
+              <button type="button" aria-pressed={!careerEnabled} onClick={() => setCareerEnabled(false)}
+                className={`min-h-11 rounded-xl border px-4 text-sm font-black ${!careerEnabled ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-600"}`}>X</button>
+            </div>
           </div>
-        </details>
+
+          {careerEnabled ? (
+            <div className="mt-4 grid gap-4 border-t border-violet-100 pt-4 sm:grid-cols-2">
+              <Field label="관심 분야 (선택)">
+                <input className={inputClass} maxLength={500} placeholder="예: 인공지능, 환경, 심리, 스포츠, 디자인" value={form.interestField} onChange={(event) => update("interestField", event.target.value)} />
+              </Field>
+              <Field label="가고 싶은 학과 (선택)">
+                <input className={inputClass} maxLength={300} placeholder="예: 컴퓨터공학과, 간호학과, 경제학과" value={form.desiredMajor} onChange={(event) => update("desiredMajor", event.target.value)} />
+              </Field>
+              <Field label="희망 직업 (선택)">
+                <input className={inputClass} maxLength={300} placeholder="예: 소프트웨어 개발자, 의사, 교사, 연구원" value={form.desiredCareer} onChange={(event) => update("desiredCareer", event.target.value)} />
+              </Field>
+            </div>
+          ) : null}
+        </section>
 
         <div className="border-t border-slate-100 p-5">
           <Field label="요청사항 (선택)">
