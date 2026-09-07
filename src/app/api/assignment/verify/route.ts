@@ -1,6 +1,7 @@
 import { verifyRequestSchema } from "@/features/assessment/schemas";
 import { applyCareerToAssignment, getCareerAiContext } from "@/features/assessment/server/career-context";
 import { verifyDraft } from "@/features/assessment/server/prompted-service";
+import { applyTextbookProfileToAssignment } from "@/features/assessment/textbook-profile";
 import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
@@ -17,9 +18,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const career = await getCareerAiContext(parsed.data.assignment.careerLinked);
+    const textbookAssignment = applyTextbookProfileToAssignment(parsed.data.assignment, request.headers.get("cookie"));
+    const career = await getCareerAiContext(textbookAssignment.careerLinked);
     const result = await verifyDraft(
-      applyCareerToAssignment(parsed.data.assignment, career),
+      applyCareerToAssignment(textbookAssignment, career),
       parsed.data.analysis,
       parsed.data.draft,
     );
