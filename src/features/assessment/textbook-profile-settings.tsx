@@ -14,21 +14,23 @@ import {
   type TextbookProfile,
 } from "./textbook-profile";
 
-const EMPTY_FORM: Omit<TextbookProfile, "id"> = {
-  curriculum: "2022 개정 교육과정",
-  schoolLevel: "고등학교",
-  grade: 1,
-  subject: "",
-  course: "",
-  publisher: "",
-  textbookTitle: "",
-  unit: "",
-  pages: "",
-};
+function emptyForm(defaultPublisher = ""): Omit<TextbookProfile, "id"> {
+  return {
+    curriculum: "2022 개정 교육과정",
+    schoolLevel: "고등학교",
+    grade: 1,
+    subject: "",
+    course: "",
+    publisher: defaultPublisher,
+    textbookTitle: "",
+    unit: "",
+    pages: "",
+  };
+}
 
-export function TextbookProfileSettings() {
+export function TextbookProfileSettings({ defaultPublisher = "" }: { defaultPublisher?: string }) {
   const [profiles, setProfiles] = useState<TextbookProfile[]>([]);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(() => emptyForm(defaultPublisher));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
@@ -39,6 +41,16 @@ export function TextbookProfileSettings() {
     setProfiles(initial);
     if (initial.length) persistProfiles(initial);
   }, []);
+
+  useEffect(() => {
+    if (!editingId && !form.publisher && defaultPublisher) {
+      setForm((current) => ({ ...current, publisher: defaultPublisher }));
+    }
+  }, [defaultPublisher, editingId, form.publisher]);
+
+  function resetForm() {
+    setForm(emptyForm(defaultPublisher));
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,7 +66,7 @@ export function TextbookProfileSettings() {
     setProfiles(next);
     persistProfiles(next);
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    resetForm();
     setMessage("이 기기에 저장했습니다. 같은 교육과정·학교급·학년·과목의 수행평가에 자동 반영됩니다.");
   }
 
@@ -71,7 +83,7 @@ export function TextbookProfileSettings() {
     persistProfiles(next);
     if (editingId === id) {
       setEditingId(null);
-      setForm(EMPTY_FORM);
+      resetForm();
     }
     setMessage("교과서 프로필을 삭제했습니다.");
   }
@@ -90,6 +102,7 @@ export function TextbookProfileSettings() {
         <h2 className="mt-1 text-lg font-black text-slate-950">과목별 교과서 프로필</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           교육과정·출판사·교과서·단원·쪽수를 저장하면 수행평가 분석, 주제 추천, 자료 조사, 설계, 초안과 검증 단계에 같은 기준을 유지합니다.
+          내 정보의 기본 출판사는 새 교과서 등록 시 자동 입력되며 과목별로 변경할 수 있습니다.
           출판사와 교과서 이름만으로 본문을 추측하지 않습니다. 실제 교과서 내용을 반영하려면 과제 입력 단계에 해당 페이지·발췌·사진/PDF 분석 내용을 함께 제공해 주세요.
         </p>
       </Card>
@@ -136,7 +149,7 @@ export function TextbookProfileSettings() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="min-h-12 rounded-2xl bg-violet-700 px-5 font-extrabold text-white transition active:scale-[0.98]" type="submit">{editingId ? "수정 저장" : "교과서 등록"}</button>
-            {editingId ? <button className="min-h-12 rounded-2xl border border-slate-200 px-5 font-extrabold text-slate-600" onClick={() => { setEditingId(null); setForm(EMPTY_FORM); setMessage(""); }} type="button">수정 취소</button> : null}
+            {editingId ? <button className="min-h-12 rounded-2xl border border-slate-200 px-5 font-extrabold text-slate-600" onClick={() => { setEditingId(null); resetForm(); setMessage(""); }} type="button">수정 취소</button> : null}
           </div>
           {message ? <p aria-live="polite" className="text-sm font-bold text-violet-800">{message}</p> : null}
         </form>
