@@ -14,11 +14,16 @@ export async function GET() {
   return proxy("GET");
 }
 
+export async function PATCH(request: Request) {
+  const body = await request.text();
+  return proxy("PATCH", body);
+}
+
 export async function DELETE() {
   return proxy("DELETE");
 }
 
-async function proxy(method: "GET" | "DELETE") {
+async function proxy(method: "GET" | "PATCH" | "DELETE", body?: string) {
   const user = await getAuthenticatedUser();
   if (!user) return Response.json({ profile: null }, { status: 401, headers: noStoreHeaders() });
 
@@ -29,7 +34,11 @@ async function proxy(method: "GET" | "DELETE") {
   try {
     const response = await fetch(CANONICAL_PERSONALIZATION_URL, {
       method,
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(method === "PATCH" ? { "Content-Type": "application/json" } : {}),
+      },
+      ...(method === "PATCH" ? { body: body || "{}" } : {}),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
     });
