@@ -1,9 +1,12 @@
 import Link from "next/link";
 
-import { TextbookProfileSettings } from "@/features/assessment/textbook-profile-settings";
 import { PageHeader } from "@/components/ui";
+import { TextbookProfileSettings } from "@/features/assessment/textbook-profile-settings";
+import { readSharedPersonalization } from "@/lib/personalization/shared-server";
 
-export default function TextbookSettingsPage() {
+export default async function TextbookSettingsPage() {
+  const sharedPersonalization = await readSharedPersonalization();
+
   return (
     <main className="mx-auto min-h-[calc(100dvh-4rem)] max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
       <div className="mb-4">
@@ -20,7 +23,7 @@ export default function TextbookSettingsPage() {
         eyebrow="앱 설정"
         title="내 교과서"
       />
-      <TextbookProfileSettings />
+      <TextbookProfileSettings defaultPublisher={sharedPersonalization?.defaultPublisher ?? ""} />
     </main>
   );
 }
