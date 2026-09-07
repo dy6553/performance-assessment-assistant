@@ -59,6 +59,7 @@ export async function POST(request: Request) {
         break;
       case "push": result = await rpc("sync_push_records", { p_device_id: deviceId, p_records: body.records }, token); break;
       case "pull": result = await rpc("sync_pull_records", { p_device_id: deviceId, p_cursor: body.cursor }, token); break;
+      case "ack": result = await rpc("sync_ack_items", { p_device_id: deviceId, p_items: body.items }, token); break;
       case "touch": result = await rpc("sync_touch_device", { p_device_id: deviceId, p_last_sync_at: body.lastSyncAt }, token); break;
       case "revoke": result = await rpc("sync_revoke_device", { p_device_id: deviceId, p_target_device_id: body.targetDeviceId }, token); break;
       case "file-state": result = await rpc("sync_get_file_state", { p_device_id: deviceId, p_file_id: body.fileId }, token); break;
