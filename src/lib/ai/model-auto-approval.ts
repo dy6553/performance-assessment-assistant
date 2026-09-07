@@ -81,9 +81,11 @@ export type AutoModelApprovalSummary = {
 };
 
 const POLICY_VERSION = "2026-09-07.1";
-const MAX_NEW_REVIEWS_PER_RUN = 15;
-const REVIEW_CONCURRENCY = 3;
+const MAX_NEW_REVIEWS_PER_RUN = 30;
+const REVIEW_CONCURRENCY = 5;
+const MIN_ROUTING_CANDIDATES = 5;
 const REVIEW_RETRY_INTERVAL_MS = 7 * 24 * 60 * 60 * 1_000;
+const REPLENISH_RETRY_INTERVAL_MS = 24 * 60 * 60 * 1_000;
 const MIN_INTERNAL_SCORE = 0.75;
 const LATENCY_IMPROVEMENT_RATIO = 0.85;
 
@@ -172,7 +174,13 @@ export async function autoReviewDailyModelCatalog(
     await recordBaselineEvaluation(config, baselineRow, baselineBenchmark);
   }
 
-  const reviewCutoff = Date.now() - REVIEW_RETRY_INTERVAL_MS;
+  const usableCount = visibleRows.filter(
+    (row) => row.production_approved && row.enabled && !row.deprecated,
+  ).length;
+  const retryInterval = usableCount < MIN_ROUTING_CANDIDATES
+    ? REPLENISH_RETRY_INTERVAL_MS
+    : REVIEW_RETRY_INTERVAL_MS;
+  const reviewCutoff = Date.now() - retryInterval;
   const candidates = visibleRows
     .filter((row) => !row.production_approved || !row.enabled)
     .filter((row) => {

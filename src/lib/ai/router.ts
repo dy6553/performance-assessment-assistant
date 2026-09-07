@@ -51,6 +51,21 @@ type RegistryCache = { records: ModelRecord[]; expiresAt: number };
 
 let registryCache: RegistryCache | undefined;
 
+// NVIDIA's account-scoped /models response can omit documented endpoints.
+// These official-catalog IDs are discovery seeds only: they still have to pass
+// the live API, Korean, structured-output and faithfulness review before use.
+const OFFICIAL_DISCOVERY_MODEL_IDS = [
+  "nvidia/nemotron-3-ultra-550b-a55b",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+  "meta/muse-glimmer-30b",
+  "google/gemma-3-27b-it",
+  "google/gemma-4-31b-it",
+  "mistralai/mistral-large-3-675b-instruct-2512",
+  "mistralai/ministral-14b-instruct-2512",
+] as const;
+
 export type ModelRoutingContext = {
   subject?: string;
   schoolLevel?: string;
@@ -329,9 +344,12 @@ export async function refreshModelCatalog(): Promise<ModelCatalogRefresh> {
   };
   const catalogIds = Array.from(
     new Set(
-      (payload.data ?? [])
+      [
+        ...(payload.data ?? [])
         .map((item) => (typeof item.id === "string" ? item.id.trim() : ""))
         .filter(Boolean),
+        ...OFFICIAL_DISCOVERY_MODEL_IDS,
+      ],
     ),
   );
 
