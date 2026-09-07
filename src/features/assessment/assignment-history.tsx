@@ -18,7 +18,7 @@ type AssignmentSnapshot = {
 type HistoryRecord = {
   version: number;
   fingerprint: string;
-  operation: "analyze" | "generate" | "verify";
+  operation: "topic" | "analyze" | "generate" | "verify";
   label: string;
   state: "RUNNING" | "DONE" | "ERROR";
   assignment: AssignmentSnapshot;
@@ -139,7 +139,7 @@ export function AssignmentHistory() {
     return (
       <div className="rounded-[2rem] border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-8">
         <p className="text-lg font-black text-slate-900">아직 저장된 작업이 없습니다.</p>
-        <p className="mt-2 text-sm leading-6 text-slate-500">과제 분석, 초안 작성, 독립 검증을 시작하면 이 기기에 24시간 동안 기록됩니다.</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">AI 주제 추천, 과제 분석, 초안 작성, 독립 검증을 시작하면 이 기기에 24시간 동안 기록됩니다.</p>
         <Link className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-black text-white" href="/assignment/workspace">수행평가 작업 시작</Link>
       </div>
     );
@@ -160,6 +160,7 @@ function HistoryCard({ group, now }: { group: HistoryGroup; now: number }) {
   const verify = group.records.find((record) => record.operation === "verify" && record.state === "DONE");
   const generate = group.records.find((record) => record.operation === "generate" && record.state === "DONE");
   const analyze = group.records.find((record) => record.operation === "analyze" && record.state === "DONE");
+  const topic = group.records.find((record) => record.operation === "topic" && record.state === "DONE");
   const remainingMinutes = Math.max(0, Math.ceil((group.expiresAt - now) / 60_000));
 
   return (
@@ -173,7 +174,8 @@ function HistoryCard({ group, now }: { group: HistoryGroup; now: number }) {
         <Status state={running ? "RUNNING" : error ? "ERROR" : "DONE"} label={running?.label} />
       </div>
 
-      <div className="mt-5 grid gap-2 sm:grid-cols-3">
+      <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <Stage label="주제 추천" record={topic ?? group.records.find((item) => item.operation === "topic")} />
         <Stage label="분석" record={analyze ?? group.records.find((item) => item.operation === "analyze")} />
         <Stage label="초안" record={generate ?? group.records.find((item) => item.operation === "generate")} />
         <Stage label="검증" record={verify ?? group.records.find((item) => item.operation === "verify")} />
@@ -181,10 +183,11 @@ function HistoryCard({ group, now }: { group: HistoryGroup; now: number }) {
 
       {error?.error ? <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error.error}</p> : null}
 
-      {analyze || generate || verify ? (
+      {topic || analyze || generate || verify ? (
         <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <summary className="cursor-pointer text-sm font-black text-slate-800">저장된 결과 보기</summary>
           <div className="mt-4 space-y-5">
+            {topic ? <TopicResultView record={topic} /> : null}
             {analyze ? <AnalysisResultView record={analyze} /> : null}
             {generate ? <DraftResultView record={generate} /> : null}
             {verify ? <VerificationResultView record={verify} /> : null}
@@ -192,6 +195,24 @@ function HistoryCard({ group, now }: { group: HistoryGroup; now: number }) {
         </details>
       ) : null}
     </article>
+  );
+}
+
+function TopicResultView({ record }: { record: HistoryRecord }) {
+  const topics = record.responseBody?.topics as Array<{ title?: string; rationale?: string }> | undefined;
+  if (!topics?.length) return null;
+  return (
+    <section>
+      <h3 className="text-sm font-black text-slate-950">추천 주제</h3>
+      <div className="mt-2 space-y-2">
+        {topics.map((topic, index) => (
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5" key={`${topic.title || "topic"}-${index}`}>
+            <p className="text-sm font-black text-slate-800">{topic.title || `추천 주제 ${index + 1}`}</p>
+            {topic.rationale ? <p className="mt-1 text-xs leading-5 text-slate-500">{topic.rationale}</p> : null}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

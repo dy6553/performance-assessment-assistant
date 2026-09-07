@@ -5,6 +5,7 @@ const HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg", "/icon-192.png", "/icon-512.png"];
 
 const TRACKED_ASSIGNMENT_REQUESTS = {
+  "/api/assignment/recommend-topic": { operation: "topic", label: "AI 주제 추천" },
   "/api/assignment/analyze": { operation: "analyze", label: "과제 분석" },
   "/api/assignment/generate": { operation: "generate", label: "초안 작성" },
   "/api/assignment/verify": { operation: "verify", label: "초안 독립 검증" },
@@ -77,8 +78,8 @@ async function trackAssignmentRequest(request, tracked) {
     return fetch(request);
   }
 
-  const assignment = body?.assignment;
-  if (!assignment || typeof assignment !== "object") return fetch(request);
+  const assignment = getAssignmentSnapshot(body, tracked.operation);
+  if (!assignment) return fetch(request);
 
   const fingerprint = await fingerprintAssignment(assignment);
   const startedAt = Date.now();
@@ -150,6 +151,20 @@ async function trackAssignmentRequest(request, tracked) {
     });
     throw error;
   }
+}
+
+function getAssignmentSnapshot(body, operation) {
+  if (!body || typeof body !== "object") return null;
+  if (body.assignment && typeof body.assignment === "object") return body.assignment;
+  if (operation !== "topic") return null;
+
+  return {
+    subject: typeof body.subject === "string" ? body.subject : "",
+    topic: "AI 주제 추천 요청",
+    assignmentType: typeof body.assignmentType === "string" ? body.assignmentType : "주제 추천",
+    schoolLevel: typeof body.schoolLevel === "string" ? body.schoolLevel : "",
+    grade: typeof body.grade === "number" ? body.grade : undefined,
+  };
 }
 
 async function fingerprintAssignment(assignment) {
