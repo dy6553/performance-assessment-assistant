@@ -12,6 +12,7 @@ export function ProfileForm({
   nickname,
   schoolName,
   age,
+  defaultPublisher,
   careerInterest,
   desiredMajor,
   desiredCareer,
@@ -20,6 +21,7 @@ export function ProfileForm({
   nickname: string;
   schoolName: string;
   age: number | null;
+  defaultPublisher: string;
   careerInterest: string;
   desiredMajor: string;
   desiredCareer: string;
@@ -64,6 +66,12 @@ export function ProfileForm({
       <label className="block">
         <span className="mb-2 block text-sm font-black text-slate-700">나이</span>
         <input className={inputClass} defaultValue={age ?? ""} inputMode="numeric" max={100} min={6} name="age" placeholder="예: 16" required type="number" />
+      </label>
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-black text-slate-700">기본 교과서 출판사 (선택)</span>
+        <input className={inputClass} defaultValue={defaultPublisher} maxLength={80} name="defaultPublisher" placeholder="예: 비상교육, 미래엔, 천재교육" />
+        <span className="mt-2 block text-xs font-semibold leading-5 text-slate-400">시험온과 같은 계정에서 공유하며, 내 교과서에 새 교과서를 등록할 때 출판사 기본값으로 사용합니다. 과목별 출판사가 다르면 개별 교과서 설정이 우선합니다.</span>
       </label>
 
       <section className="rounded-3xl border border-violet-100 bg-violet-50/60 p-4 sm:p-5">
