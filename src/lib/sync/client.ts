@@ -164,6 +164,12 @@ async function pushQueue(deviceId: string) {
     await idbPut("syncState", { key: accepted.recordId, value: accepted.version });
     await idbDelete("syncQueue", accepted.recordId);
   }
+  if (response.accepted.length) {
+    await api("ack", {
+      deviceId,
+      items: response.accepted.map((item) => ({ itemKind: "record", itemId: item.recordId, version: item.version })),
+    });
+  }
   for (const remote of response.conflicts) {
     const local = batch.find((item) => item.recordId === remote.recordId);
     if (!local) continue;
@@ -189,6 +195,7 @@ async function pullRemote(deviceId: string, key: CryptoKey) {
     deviceId,
     cursor: cursor?.value || "1970-01-01T00:00:00.000Z",
   });
+  const acknowledgements: Array<{ itemKind: "record"; itemId: string; version: number }> = [];
   for (const remote of response.records) {
     const queued = await idbGet<SyncQueueItem>("syncQueue", remote.recordId);
     if (queued && queued.baseVersion < remote.version && queued.contentHash !== remote.contentHash) {
@@ -204,7 +211,10 @@ async function pullRemote(deviceId: string, key: CryptoKey) {
       continue;
     }
     const state = await idbGet<StateRow>("syncState", remote.recordId);
-    if (Number(state?.value ?? 0) >= remote.version) continue;
+    if (Number(state?.value ?? 0) >= remote.version) {
+      acknowledgements.push({ itemKind: "record", itemId: remote.recordId, version: remote.version });
+      continue;
+    }
     const aad = `${remote.recordId}|${remote.version}|${remote.payloadSchemaVersion}`;
     const payload = await decryptJson<{ key: string } | null>(key, remote.encryptedPayload, remote.payloadIv, aad);
     const [store, ...parts] = remote.recordId.split(":");
@@ -213,7 +223,9 @@ async function pullRemote(deviceId: string, key: CryptoKey) {
     if (remote.deletedAt) await idbDelete(store as StoreName, localKey);
     else if (payload) await idbPut(store as StoreName, payload);
     await idbPut("syncState", { key: remote.recordId, value: remote.version });
+    acknowledgements.push({ itemKind: "record", itemId: remote.recordId, version: remote.version });
   }
+  if (acknowledgements.length) await api("ack", { deviceId, items: acknowledgements });
   await idbPut("syncState", { key: CURSOR_KEY, value: response.cursor });
 }
 
@@ -234,6 +246,7 @@ async function downloadEncryptedFile(deviceId: string, storagePath: string) {
 }
 
 async function syncFiles(deviceId: string, key: CryptoKey) {
+  const acknowledgements: Array<{ itemKind: "file"; itemId: string; version: number }> = [];
   const localFiles = await idbGetAll<LocalFileMeta>("files");
   for (const meta of localFiles) {
     const blob = await readLocalFile(meta);
@@ -245,6 +258,7 @@ async function syncFiles(deviceId: string, key: CryptoKey) {
     const state = await api<{ exists: boolean; version: number; contentHash: string | null }>("file-state", { deviceId, fileId: meta.key });
     if (state.contentHash === contentHash) {
       await idbPut("syncState", { key: `file-hash:${meta.key}`, value: contentHash });
+      if (state.version > 0) acknowledgements.push({ itemKind: "file", itemId: meta.key, version: state.version });
       continue;
     }
     const version = Number(state.version || 0) + 1;
@@ -257,20 +271,26 @@ async function syncFiles(deviceId: string, key: CryptoKey) {
       fileIv: encrypted.iv, contentHash, byteSize: bytes.byteLength, mimeType: meta.mimeType,
     });
     await idbPut("syncState", { key: `file-hash:${meta.key}`, value: contentHash });
+    acknowledgements.push({ itemKind: "file", itemId: meta.key, version });
   }
 
   const remote = await api<{ files: FileSyncRow[] }>("file-list", { deviceId });
   for (const file of remote.files) {
     if (file.deletedAt) continue;
     const known = await idbGet<StateRow>("syncState", `file-hash:${file.fileId}`);
-    if (known?.value === file.contentHash) continue;
+    if (known?.value === file.contentHash) {
+      acknowledgements.push({ itemKind: "file", itemId: file.fileId, version: file.version });
+      continue;
+    }
     const meta = await idbGet<LocalFileMeta>("files", file.fileId);
     if (!meta) continue; // Encrypted metadata record will be pulled before the next retry.
     const ciphertext = await downloadEncryptedFile(deviceId, file.storagePath);
     const plaintext = await decryptBytes(key, ciphertext, file.fileIv, `file:${file.fileId}|${file.version}`);
     await restoreLocalFile({ ...meta, mimeType: file.mimeType, size: file.byteSize }, new Blob([plaintext], { type: file.mimeType }));
     await idbPut("syncState", { key: `file-hash:${file.fileId}`, value: file.contentHash });
+    acknowledgements.push({ itemKind: "file", itemId: file.fileId, version: file.version });
   }
+  if (acknowledgements.length) await api("ack", { deviceId, items: acknowledgements });
 }
 
 let timer: number | null = null;
