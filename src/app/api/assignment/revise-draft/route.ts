@@ -6,6 +6,7 @@ import {
   draftResultSchema,
 } from "@/features/assessment/schemas";
 import { applyCareerToAssignment, getCareerAiContext } from "@/features/assessment/server/career-context";
+import { applyTextbookProfileToAssignment } from "@/features/assessment/textbook-profile";
 import { generateStructured } from "@/lib/ai/nvidia";
 import { routeModel } from "@/lib/ai/router";
 import { publicApiError } from "@/lib/http/server-error";
@@ -33,8 +34,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const career = await getCareerAiContext(parsed.data.assignment.careerLinked);
-    const assignment = applyCareerToAssignment(parsed.data.assignment, career);
+    const textbookAssignment = applyTextbookProfileToAssignment(parsed.data.assignment, request.headers.get("cookie"));
+    const career = await getCareerAiContext(textbookAssignment.careerLinked);
+    const assignment = applyCareerToAssignment(textbookAssignment, career);
     const { analysis, draft, instruction } = parsed.data;
     const route = await routeModel({
       task: "final_rewriter",
