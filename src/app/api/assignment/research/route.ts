@@ -1,6 +1,7 @@
 import { researchRequestSchema } from "@/features/assessment/stage-schemas";
 import { applyCareerToAssignment, getCareerAiContext } from "@/features/assessment/server/career-context";
 import { researchAssignmentEvidence } from "@/features/assessment/server/stage-service";
+import { applyTextbookProfileToAssignment } from "@/features/assessment/textbook-profile";
 import { publicApiError } from "@/lib/http/server-error";
 
 export const runtime = "nodejs";
@@ -17,8 +18,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const career = await getCareerAiContext(parsed.data.assignment.careerLinked);
-    const assignment = applyCareerToAssignment(parsed.data.assignment, career);
+    const textbookAssignment = applyTextbookProfileToAssignment(parsed.data.assignment, request.headers.get("cookie"));
+    const career = await getCareerAiContext(textbookAssignment.careerLinked);
+    const assignment = applyCareerToAssignment(textbookAssignment, career);
     const result = await researchAssignmentEvidence(assignment, parsed.data.analysis, parsed.data.sourceNotes);
     return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
