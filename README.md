@@ -51,6 +51,8 @@ Router는 Supabase `model_registry`에서 production 승인을 받은 NVIDIA 모
 
 AI 요청 시 NVIDIA 모델 카탈로그를 최대 1시간 캐시로 확인합니다. Vercel Cron은 하루 1회 `/api/internal/model-catalog/sync`를 호출합니다. 새 후보는 비활성·미승인 상태로만 등록되며 검토 전에는 사용되지 않습니다.
 
+자동 승인은 실제 API 호출, 구조화 JSON, 한국어 이해, 환각 방지와 제공 자료 충실도를 필수로 확인합니다. 일부 과목 문항과 공식 benchmark·라이선스 표기는 참고 평가로 사용하며, 실패 후보는 7일 뒤 재검사해 새 후보 검토를 막지 않습니다. 관리자 화면의 승인 수는 현재 NVIDIA 카탈로그에서 실제로 사용할 수 있는 모델만 집계합니다.
+
 ## 확인 명령
 
 ```bash

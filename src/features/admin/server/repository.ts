@@ -211,7 +211,7 @@ export class AdminRepository {
 
   async listModels(): Promise<AdminModelRecord[]> {
     return this.rest<AdminModelRecord[]>("model_registry", {
-      select: "id,provider,model_id,enabled,developer_company,country_of_headquarters,approved_provider,approved_model,allowed_for_student_data,security_review_passed,privacy_policy_verified,production_approved,deprecated,updated_at",
+      select: "id,provider,model_id,enabled,developer_company,country_of_headquarters,approved_provider,approved_model,allowed_for_student_data,security_review_passed,privacy_policy_verified,production_approved,deprecated,catalog_available,updated_at",
       order: "production_approved.desc,enabled.desc,model_id.asc",
       limit: "1000",
     });

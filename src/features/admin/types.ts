@@ -42,6 +42,7 @@ export type AdminModelRecord = {
   privacy_policy_verified: boolean;
   production_approved: boolean;
   deprecated: boolean;
+  catalog_available: boolean;
   updated_at: string;
 };
 

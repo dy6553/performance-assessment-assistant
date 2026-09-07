@@ -16,7 +16,7 @@ export default async function AdminAiModelsPage() {
 
       <div className="space-y-3">
         {models.map((model) => {
-          const safe = model.approved_provider && model.approved_model && model.allowed_for_student_data && model.security_review_passed && model.privacy_policy_verified && !model.deprecated;
+          const safe = model.approved_provider && model.approved_model && model.allowed_for_student_data && model.security_review_passed && model.privacy_policy_verified && model.catalog_available && !model.deprecated;
           return (
             <Card key={model.id}>
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -29,6 +29,9 @@ export default async function AdminAiModelsPage() {
                     <span className={`rounded-full px-2.5 py-1 text-xs font-black ${model.production_approved ? "bg-violet-50 text-violet-700" : "bg-amber-50 text-amber-800"}`}>
                       {model.production_approved ? "운영 승인" : "운영 미승인"}
                     </span>
+                    {!model.catalog_available || model.deprecated ? (
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">현재 사용 불가</span>
+                    ) : null}
                   </div>
                   <p className="mt-2 text-sm font-semibold text-slate-500">{model.developer_company} · {model.country_of_headquarters} · {model.provider}</p>
                   <div className="mt-4 grid gap-2 text-xs sm:grid-cols-3">

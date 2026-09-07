@@ -34,7 +34,9 @@ export default async function AdminPage() {
     ["실패", ai.failed],
   ] as const;
 
-  const approvedModels = models.filter((model) => model.enabled && model.production_approved).length;
+  const approvedModels = models.filter((model) =>
+    model.enabled && model.production_approved && model.catalog_available && !model.deprecated
+  ).length;
   const serviceStates = [
     {
       name: "NVIDIA AI",
@@ -58,7 +60,7 @@ export default async function AdminPage() {
       name: "승인 AI 모델",
       status: approvedModels > 0 ? "ok" : "warning",
       value: `${approvedModels}개`,
-      label: "활성·운영 승인",
+      label: "현재 사용 가능",
     },
   ] as const;
 
