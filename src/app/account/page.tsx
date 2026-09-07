@@ -3,13 +3,15 @@ import { redirect } from "next/navigation";
 
 import { logoutAction } from "@/app/login/actions";
 import { ProfileForm } from "@/features/auth/profile-form";
+import { readSharedPersonalization } from "@/lib/personalization/shared-server";
 import { getAuthenticatedUser } from "@/lib/supabase/server/auth";
 import { getCurrentUserProfile } from "@/lib/supabase/server/profile";
 
 export default async function AccountPage() {
-  const [user, profile] = await Promise.all([
+  const [user, profile, sharedPersonalization] = await Promise.all([
     getAuthenticatedUser(),
     getCurrentUserProfile(),
+    readSharedPersonalization(),
   ]);
   if (!user) redirect("/login?next=/account");
 
@@ -37,7 +39,7 @@ export default async function AccountPage() {
           사용자 정보와 로그인
         </h1>
         <p className="mt-3 text-sm font-semibold leading-7 text-slate-600 sm:text-base">
-          학교·나이와 진로 정보를 저장합니다. 진로 반영 여부는 수행평가 작업을 시작할 때마다 선택합니다.
+          학교·나이·기본 교과서 출판사와 진로 정보를 저장합니다. 진로 반영 여부는 수행평가 작업을 시작할 때마다 선택합니다.
         </p>
       </header>
 
@@ -51,6 +53,7 @@ export default async function AccountPage() {
             age={profile?.age ?? null}
             careerInterest={profile?.career_interest ?? ""}
             careerNotes={profile?.career_notes ?? ""}
+            defaultPublisher={sharedPersonalization?.defaultPublisher ?? ""}
             desiredCareer={profile?.desired_career ?? ""}
             desiredMajor={profile?.desired_major ?? ""}
             nickname={nickname}
@@ -86,6 +89,17 @@ export default async function AccountPage() {
               <InfoRow label="관심 분야" value={profile?.career_interest || "미등록"} />
               <InfoRow label="희망 전공" value={profile?.desired_major || "미등록"} />
               <InfoRow label="희망 진로" value={profile?.desired_career || "미등록"} />
+            </dl>
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">교과서 기본값</p>
+            <h2 className="mt-3 text-lg font-black text-slate-950">기본 출판사</h2>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
+              시험온과 수행도우미가 같은 계정에서 공유합니다. 과목별 내 교과서에 다른 출판사를 등록하면 해당 과목 설정이 우선합니다.
+            </p>
+            <dl className="mt-5 space-y-3 rounded-2xl bg-slate-50 p-4 text-sm">
+              <InfoRow label="출판사" value={sharedPersonalization?.defaultPublisher || "미등록"} />
             </dl>
           </section>
 
