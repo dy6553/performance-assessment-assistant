@@ -14,6 +14,14 @@ export default async function AdminAiModelsPage() {
         description="시험온처럼 승인 모델의 사용 여부와 운영 승인 상태를 관리합니다. 보안·개인정보 검토 상태도 함께 확인합니다."
       />
 
+      {admin.role === "SUPER_ADMIN" ? (
+        <form action="/api/admin/ai-models/refresh" className="mb-4" method="post">
+          <button className="min-h-11 rounded-xl bg-violet-600 px-4 text-sm font-black text-white" type="submit">
+            지금 모델 목록 갱신·심사
+          </button>
+        </form>
+      ) : null}
+
       <div className="space-y-3">
         {models.map((model) => {
           const available = model.catalog_available && !model.deprecated;
