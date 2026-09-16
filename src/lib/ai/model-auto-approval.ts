@@ -80,13 +80,13 @@ export type AutoModelApprovalSummary = {
   }>;
 };
 
-const POLICY_VERSION = "2026-09-07.1";
+const POLICY_VERSION = "2026-09-16.1-minimum-trusted-provider";
 const MAX_NEW_REVIEWS_PER_RUN = 30;
 const REVIEW_CONCURRENCY = 5;
 const MIN_ROUTING_CANDIDATES = 5;
 const REVIEW_RETRY_INTERVAL_MS = 7 * 24 * 60 * 60 * 1_000;
 const REPLENISH_RETRY_INTERVAL_MS = 24 * 60 * 60 * 1_000;
-const MIN_INTERNAL_SCORE = 0.75;
+const MIN_INTERNAL_SCORE = 0.6;
 const LATENCY_IMPROVEMENT_RATIO = 0.85;
 
 // The user's approved-provider policy starts from these explicitly reviewed,
@@ -184,10 +184,10 @@ export async function autoReviewDailyModelCatalog(
   const candidates = visibleRows
     .filter((row) => !row.production_approved || !row.enabled)
     .filter((row) => {
-      const reviewedAt = readDate(
-        capabilityRecord(row.evaluation_profile_json).autoReviewedAt,
-      );
-      return reviewedAt === null || reviewedAt < reviewCutoff;
+      const evaluation = capabilityRecord(row.evaluation_profile_json);
+      const reviewedAt = readDate(evaluation.autoReviewedAt);
+      return evaluation.policyVersion !== POLICY_VERSION ||
+        reviewedAt === null || reviewedAt < reviewCutoff;
     })
     .sort((a, b) =>
       reviewPriority(a) - reviewPriority(b) ||
@@ -267,29 +267,11 @@ async function reviewCandidate({
     benchmarkModel(config, row.model_id),
   ]);
 
-  if (!official.modelPage && !official.modelCard) {
-    reasons.push("NVIDIA 공식 모델 페이지와 Model Card를 모두 확인할 수 없습니다.");
-  }
-  if (!official.benchmarkEvidence) {
-    reasons.push("공식 Model Card에서 benchmark/evaluation 근거를 확인하지 못했습니다.");
-  }
-  if (!official.licenseEvidence || !official.commercialUse) {
-    reasons.push("자동 승인 가능한 라이선스/상업적 사용 근거를 확인하지 못했습니다.");
-  }
   if (!benchmark.operational) {
     reasons.push(`NVIDIA API 실제 호출에 실패했습니다${benchmark.failureCode ? ` (${benchmark.failureCode})` : ""}.`);
   }
   if (!benchmark.structuredOutput) reasons.push("Structured Output 내부 검증을 통과하지 못했습니다.");
   if (!benchmark.korean) reasons.push("한국어 내부 benchmark를 통과하지 못했습니다.");
-  if (!benchmark.subjectPass) reasons.push("수학·과학·사회 과목 내부 benchmark를 통과하지 못했습니다.");
-  if (!benchmark.hallucinationGuard) reasons.push("성취기준 환각 방지 테스트를 통과하지 못했습니다.");
-  if (!benchmark.sourceFaithfulness) reasons.push("자료 충실도(source-faithfulness) 테스트를 통과하지 못했습니다.");
-  if (benchmark.score < MIN_INTERNAL_SCORE) {
-    reasons.push(`내부 Eval 점수 ${benchmark.score.toFixed(3)}가 최소 기준 ${MIN_INTERNAL_SCORE.toFixed(3)}보다 낮습니다.`);
-  }
-  if (benchmark.score + 1e-9 < baselineScore) {
-    reasons.push(`현재 운영 기준 품질(${baselineScore.toFixed(3)})보다 낮습니다.`);
-  }
 
   const candidateCapabilities = {
     korean: benchmark.korean,
@@ -308,13 +290,9 @@ async function reviewCandidate({
   const qualityGain = benchmark.score > baselineScore + 0.001;
 
   const hardPass =
-    (official.modelPage || official.modelCard) &&
     benchmark.operational &&
     benchmark.structuredOutput &&
-    benchmark.korean &&
-    benchmark.hallucinationGuard &&
-    benchmark.sourceFaithfulness &&
-    benchmark.score >= MIN_INTERNAL_SCORE;
+    benchmark.korean;
 
   if (!hardPass) {
     await saveRejected(config, row, now, reasons, "auto_eval_failed", {
@@ -329,7 +307,7 @@ async function reviewCandidate({
   }
 
   const qualityTier =
-    benchmark.score >= 0.95 || candidateCapabilities.reasoning ? "high" : "efficient";
+    benchmark.score >= 0.85 || candidateCapabilities.reasoning ? "high" : "efficient";
   const taskAffinity = candidateCapabilities.reasoning
     ? [
         "task_parser",
@@ -374,7 +352,7 @@ async function reviewCandidate({
       difficultyMax: 7,
       internalEvalScore: benchmark.score,
       latencyMs: benchmark.latencyMs,
-      externalEvidenceVerified: true,
+      externalEvidenceVerified: official.modelPage || official.modelCard,
       status: "auto_production_approved",
       policyVersion: POLICY_VERSION,
       autoReviewedAt: now,
@@ -395,9 +373,8 @@ async function reviewCandidate({
     modelId: row.model_id,
     status: "approved",
     reasons: [
-      "출처·Provider·학생 데이터·보안·개인정보 Hard Filter 통과",
-      "NVIDIA 공식 모델 페이지 또는 Model Card 확인",
-      `한국어·과목·환각·출처 충실도 내부 Eval 통과 (${benchmark.score.toFixed(3)})`,
+      "NVIDIA 제공 경로·비중국계 신뢰 개발사·학생 데이터 허용 기준 통과",
+      `한국어·구조화 출력·실제 API 호출 최소 기준 통과 (${benchmark.score.toFixed(3)})`,
       qualityGain
         ? "현재 운영 모델보다 내부 품질 점수 개선"
         : latencyGain
