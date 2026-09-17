@@ -19,3 +19,7 @@
 `src/lib/ai/model-auto-approval.ts`에 `PRIORITY_PUBLISHERS`를 추가하고 정책 버전을 `2026-09-17.3-priority-publisher-korean`으로 올렸다. 승인 결과의 `evaluation_profile_json`에 `priorityPublisher`를 기록해 우선 그룹 여부를 확인할 수 있게 했다.
 
 데이터베이스 스키마 변경은 없다.
+
+## 배포 검증
+
+정책 소스 커밋 이후 일반 `main` 커밋을 추가해 CI 및 Vercel 운영 배포가 최신 정책 코드를 포함한 HEAD를 기준으로 다시 실행되도록 했다.
