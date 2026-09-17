@@ -80,7 +80,7 @@ export type AutoModelApprovalSummary = {
   }>;
 };
 
-const POLICY_VERSION = "2026-09-17.2-korean-trusted-chat";
+const POLICY_VERSION = "2026-09-17.3-priority-publisher-korean";
 const MAX_NEW_REVIEWS_PER_RUN = 30;
 const REVIEW_CONCURRENCY = 5;
 const MIN_ROUTING_CANDIDATES = 5;
@@ -108,6 +108,19 @@ const TRUSTED_PUBLISHERS: Record<string, PublisherPolicy> = {
   naver: { company: "NAVER Corporation", headquarters: "South Korea" },
   rakuten: { company: "Rakuten Group, Inc.", headquarters: "Japan" },
 };
+
+// Models from these reviewed companies are evaluated as priority candidates.
+// Their company reliability is treated as a policy input, so the model review focuses
+// on Korean capability and the existing operational/student-data gates.
+const PRIORITY_PUBLISHERS = new Set([
+  "nvidia",
+  "openai",
+  "google",
+  "meta",
+  "microsoft",
+  "mistralai",
+  "nv-mistralai",
+]);
 
 const BLOCKED_PUBLISHERS = new Set([
   "deepseek-ai",
@@ -193,7 +206,12 @@ export async function autoReviewDailyModelCatalog(
         reviewedAt === null || reviewedAt < reviewCutoff;
     })
     .sort((a, b) =>
+      // Keep existing workload classes first, then prioritize the six reviewed
+      // companies within the same class so chat-capable models are not displaced
+      // by embeddings/parsers solely because of publisher name.
       reviewClass(a) - reviewClass(b) ||
+      Number(PRIORITY_PUBLISHERS.has(publisherOf(b.model_id))) -
+        Number(PRIORITY_PUBLISHERS.has(publisherOf(a.model_id))) ||
       reviewPriority(a) - reviewPriority(b) ||
       String(a.catalog_first_seen_at ?? "").localeCompare(String(b.catalog_first_seen_at ?? "")),
     )
@@ -244,6 +262,7 @@ async function reviewCandidate({
   const now = new Date().toISOString();
   const publisher = publisherOf(row.model_id);
   const origin = TRUSTED_PUBLISHERS[publisher];
+  const priorityPublisher = PRIORITY_PUBLISHERS.has(publisher);
   const reasons: string[] = [];
 
   if (BLOCKED_PUBLISHERS.has(publisher)) {
@@ -357,6 +376,7 @@ async function reviewCandidate({
       internalEvalScore: benchmark.score,
       latencyMs: benchmark.latencyMs,
       externalEvidenceVerified: official.modelPage || official.modelCard,
+      priorityPublisher,
       status: "auto_production_approved",
       policyVersion: POLICY_VERSION,
       autoReviewedAt: now,
@@ -377,7 +397,9 @@ async function reviewCandidate({
     modelId: row.model_id,
     status: "approved",
     reasons: [
-      "NVIDIA 제공 경로·비중국계 신뢰 개발사·학생 데이터 허용 기준 통과",
+      priorityPublisher
+        ? "우선 개발사 모델: 개발사 신뢰도 재심사 없이 한국어 능력 중심 평가; NVIDIA 제공 경로·학생 데이터 허용 기준 유지"
+        : "NVIDIA 제공 경로·비중국계 신뢰 개발사·학생 데이터 허용 기준 통과",
       `한국어·구조화 출력·실제 API 호출 최소 기준 통과 (${benchmark.score.toFixed(3)})`,
       qualityGain
         ? "현재 운영 모델보다 내부 품질 점수 개선"
