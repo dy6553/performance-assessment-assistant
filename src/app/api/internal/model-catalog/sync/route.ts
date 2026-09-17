@@ -1,5 +1,5 @@
-import { autoReviewDailyModelCatalog } from "@/lib/ai/model-auto-approval";
 import { refreshModelCatalog } from "@/lib/ai/router";
+import { syncSharedApprovedModelRegistry } from "@/lib/ai/shared-model-registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,8 +15,8 @@ export async function GET(request: Request) {
 
   try {
     const result = await refreshModelCatalog();
-    const autoApproval = result.synced
-      ? await autoReviewDailyModelCatalog(result.catalogIds)
+    const sharedRegistry = result.synced
+      ? await syncSharedApprovedModelRegistry()
       : null;
 
     return Response.json({
@@ -24,14 +24,14 @@ export async function GET(request: Request) {
       catalogModelCount: result.catalogIds.length,
       registrySynced: result.synced,
       observedAt: result.observedAt,
-      autoApproval,
+      sharedRegistry,
     });
   } catch (error) {
-    console.warn("Daily model catalog sync/approval failed", {
+    console.warn("Daily model catalog/shared registry sync failed", {
       errorCode: error instanceof Error ? error.message.slice(0, 120) : "UNKNOWN",
     });
     return Response.json(
-      { success: false, error: "MODEL_CATALOG_REFRESH_FAILED" },
+      { success: false, error: "MODEL_REGISTRY_SYNC_FAILED" },
       { status: 503 },
     );
   }
