@@ -1,0 +1,33 @@
+name: One-time model review 2026-09-17
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/one-time-model-review-20260917.yml
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run protected production model review
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        shell: bash
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET_NOT_CONFIGURED"
+            exit 2
+          fi
+          http_code=$(curl --silent --show-error --max-time 295 \
+            --output /tmp/model-review.json \
+            --write-out '%{http_code}' \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            https://wanhee-two.vercel.app/api/internal/model-catalog/sync)
+          echo "HTTP ${http_code}"
+          cat /tmp/model-review.json
+          echo
+          test "$http_code" = "200"
