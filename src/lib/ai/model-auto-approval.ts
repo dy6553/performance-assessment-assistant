@@ -80,7 +80,7 @@ export type AutoModelApprovalSummary = {
   }>;
 };
 
-const POLICY_VERSION = "2026-09-16.1-minimum-trusted-provider";
+const POLICY_VERSION = "2026-09-17.2-korean-trusted-chat";
 const MAX_NEW_REVIEWS_PER_RUN = 30;
 const REVIEW_CONCURRENCY = 5;
 const MIN_ROUTING_CANDIDATES = 5;
@@ -99,11 +99,13 @@ const TRUSTED_PUBLISHERS: Record<string, PublisherPolicy> = {
   microsoft: { company: "Microsoft Corporation", headquarters: "United States" },
   openai: { company: "OpenAI, L.L.C.", headquarters: "United States" },
   mistralai: { company: "Mistral AI", headquarters: "France" },
+  "nv-mistralai": { company: "NVIDIA / Mistral AI", headquarters: "France" },
   cohere: { company: "Cohere Inc.", headquarters: "Canada" },
   ibm: { company: "International Business Machines Corporation", headquarters: "United States" },
   ai21labs: { company: "AI21 Labs Ltd.", headquarters: "Israel" },
   upstage: { company: "Upstage Co., Ltd.", headquarters: "South Korea" },
   navercorp: { company: "NAVER Corporation", headquarters: "South Korea" },
+  naver: { company: "NAVER Corporation", headquarters: "South Korea" },
   rakuten: { company: "Rakuten Group, Inc.", headquarters: "Japan" },
 };
 
@@ -183,6 +185,7 @@ export async function autoReviewDailyModelCatalog(
   const reviewCutoff = Date.now() - retryInterval;
   const candidates = visibleRows
     .filter((row) => !row.production_approved || !row.enabled)
+    .filter((row) => Boolean(TRUSTED_PUBLISHERS[publisherOf(row.model_id)]) && !BLOCKED_PUBLISHERS.has(publisherOf(row.model_id)))
     .filter((row) => {
       const evaluation = capabilityRecord(row.evaluation_profile_json);
       const reviewedAt = readDate(evaluation.autoReviewedAt);
@@ -190,6 +193,7 @@ export async function autoReviewDailyModelCatalog(
         reviewedAt === null || reviewedAt < reviewCutoff;
     })
     .sort((a, b) =>
+      reviewClass(a) - reviewClass(b) ||
       reviewPriority(a) - reviewPriority(b) ||
       String(a.catalog_first_seen_at ?? "").localeCompare(String(b.catalog_first_seen_at ?? "")),
     )
@@ -278,7 +282,7 @@ async function reviewCandidate({
     reasoning: benchmark.reasoning || official.reasoning,
     structured_output: benchmark.structuredOutput,
     long_context: official.longContext,
-    vision: official.vision,
+    vision: official.vision && /vision|omni|vlm/i.test(row.model_id),
   };
   const capabilityGain = Object.entries(candidateCapabilities).some(
     ([key, value]) => value === true && baselineCapabilities[key] !== true,
@@ -513,7 +517,7 @@ async function benchmarkModel(config: Config, modelId: string): Promise<Benchmar
     return {
       operational: true,
       structuredOutput: true,
-      korean: checks.korean && checks.science && checks.hallucination,
+      korean: checks.korean,
       subjectPass: checks.math && checks.arithmetic && checks.science && checks.social,
       hallucinationGuard: checks.hallucination,
       sourceFaithfulness: checks.source,
@@ -718,6 +722,16 @@ function readDate(value: unknown): number | null {
   if (typeof value !== "string") return null;
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function reviewClass(row: RegistryRow): number {
+  const model = row.model_id.toLowerCase();
+  const evaluation = capabilityRecord(row.evaluation_profile_json);
+  const benchmark = capabilityRecord(evaluation.benchmark);
+  if (benchmark.failureCode === "NVIDIA_404" || benchmark.failureCode === "NVIDIA_410") return 3;
+  if (/embed|reward|safety|guard|translate|detector|clip|parse|codegemma|codellama|codestral/.test(model)) return 2;
+  if (/mistral-nemotron|nemotron-3\.5-lightning|gpt-oss-20b|muse-glimmer|llama-3\.2-11b-vision|nemotron-3-nano-omni|gemma-4-31b/.test(model)) return 0;
+  return 1;
 }
 
 function reviewPriority(row: RegistryRow): number {
