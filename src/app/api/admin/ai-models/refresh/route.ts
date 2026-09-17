@@ -1,6 +1,6 @@
 import { getAdminContext } from "@/features/admin/server/auth";
-import { autoReviewDailyModelCatalog } from "@/lib/ai/model-auto-approval";
 import { refreshModelCatalog } from "@/lib/ai/router";
+import { syncSharedApprovedModelRegistry } from "@/lib/ai/shared-model-registry";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -20,20 +20,20 @@ export async function POST() {
       );
     }
 
-    const autoApproval = await autoReviewDailyModelCatalog(catalog.catalogIds);
+    const sharedRegistry = await syncSharedApprovedModelRegistry();
     await admin.repository.addAuditLog({
       admin_user_id: admin.user.id,
-      action: "AI 모델 목록 갱신 및 자동 심사",
+      action: "AI 모델 목록 갱신 및 공통 승인 목록 동기화",
       target_type: "AI_MODEL",
       target_id: null,
       reason: null,
       metadata: {
         catalogModelCount: catalog.catalogIds.length,
         observedAt: catalog.observedAt,
-        checked: autoApproval.checked,
-        approved: autoApproval.approved,
-        rejected: autoApproval.rejected,
-        pending: autoApproval.pending,
+        sharedRegistrySource: sharedRegistry.source,
+        sharedRegistryCheckedAt: sharedRegistry.checkedAt,
+        approved: sharedRegistry.approved,
+        revoked: sharedRegistry.revoked,
       },
     });
 
@@ -41,14 +41,14 @@ export async function POST() {
       success: true,
       catalogModelCount: catalog.catalogIds.length,
       observedAt: catalog.observedAt,
-      autoApproval,
+      sharedRegistry,
     });
   } catch (error) {
-    console.warn("Admin model catalog refresh failed", {
+    console.warn("Admin shared model registry refresh failed", {
       errorCode: error instanceof Error ? error.message.slice(0, 120) : "UNKNOWN",
     });
     return Response.json(
-      { success: false, error: "모델 목록 갱신 및 심사에 실패했습니다." },
+      { success: false, error: "모델 목록 갱신 및 공통 승인 목록 동기화에 실패했습니다." },
       { status: 503 },
     );
   }
