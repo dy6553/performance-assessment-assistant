@@ -25,3 +25,13 @@
 - 두 모델 모두 수행도우미 로컬 Registry에서도 `enabled=true`, `production_approved=true` 상태를 확인했다.
 - 따라서 수행도우미는 1위를 기본 OCR, 2위를 독립 검증 OCR로 사용한다.
 - 나머지 7개 후보는 이번 회차에서 타임아웃, 구조화 실패 또는 NVIDIA 400 응답으로 실제 OCR 점수를 계산하지 못해 순위에 포함되지 않았다.
+
+## 2026-09-18 OCR 오류 복구 최종 동기화
+
+- 시험온의 OCR 오류 복구 후 공유 순위가 다시 갱신됐다.
+- 현재 기본 OCR은 `google/gemma-4-31b-it` (0.9777777778), 독립 검증 OCR은 `google/diffusiongemma-26b-a4b-it` (0.8615384615)이다.
+- `nvidia/ising-calibration-1.5-31b`는 0.7777777778, `meta/llama-3.2-11b-vision-instruct`는 0.3182912937로 정상 채점돼 후순위 후보로 유지된다.
+- Text-only인데 Vision으로 잘못 분류됐던 `nvidia/nemotron-3.5-lightning-30b-a3b`, `nvidia/nemotron-3-ultra-550b-a55b`, `openai/gpt-oss-20b`의 Vision capability를 수행도우미 Registry에서도 제거했다.
+- 공식 언어 지원이 English-only인 `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`은 수행도우미 Registry에서도 한국어 capability를 제거해 한국어 OCR 후보에서 제외했다.
+- `meta/muse-glimmer-30b`는 긴 재시도에서도 NVIDIA Hosted Vision 응답이 완료되지 않아 이번 회차 OCR 라우팅에서는 사용하지 않는다.
+- 수행도우미는 별도 고정 모델 목록 없이 시험온의 공유 순위를 읽으므로 위 1·2위가 즉시 OCR 기본/검증 모델로 반영된다.
