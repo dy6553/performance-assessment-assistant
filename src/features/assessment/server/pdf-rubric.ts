@@ -111,7 +111,7 @@ export async function extractRubricImages(
 
   const verifier = ranking?.verification && ranking.verification !== run.model
     ? ranking.verification
-    : ranking?.primary && ranking.primary !== run.model ? ranking.primary : null;
+    : null;
   if (!verifier) return { ...run.data, pages: imageUrls.length, model: run.model };
   try {
     const checked = await generateStructured({
@@ -170,7 +170,7 @@ async function renderPdfPages(bytes: Uint8Array): Promise<Buffer[]> {
 }
 
 
-type OcrRanking = { primary: string; verification: string };
+type OcrRanking = { primary: string; verification: string | null };
 let rankingCache: { value: OcrRanking; expiresAt: number } | undefined;
 
 async function loadOcrRanking(): Promise<OcrRanking | null> {
@@ -182,18 +182,37 @@ async function loadOcrRanking(): Promise<OcrRanking | null> {
     const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(10000) });
     if (!response.ok) return null;
     const data = (await response.json()) as { success?: boolean; primary?: unknown; verification?: unknown };
-    if (data.success !== true || typeof data.primary !== "string" || typeof data.verification !== "string" || data.primary === data.verification) return null;
-    // The local hard filter must also have received both models through the shared registry.
+    if (data.success !== true || typeof data.primary !== "string" || !data.primary.trim()) return null;
+    const primary = data.primary.trim();
+    const verification =
+      typeof data.verification === "string" &&
+      data.verification.trim() &&
+      data.verification.trim() !== primary
+        ? data.verification.trim()
+        : null;
+    // A measured primary remains usable even when the daily benchmark has not produced rank #2 yet.
+    // Every model still has to exist in the local hard-filtered Registry before use.
     const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.supabase_URL)?.trim().replace(/\/$/, "");
     const key = (process.env.SUPABASE_SECRET_KEY || process.env.sb_secret_key)?.trim();
     if (!url || !key) return null;
-    const local = await fetch(`${url}/rest/v1/model_registry?select=model_id&provider=eq.nvidia&enabled=eq.true&production_approved=eq.true&model_id=in.(${encodeURIComponent('"' + data.primary + '","' + data.verification + '"')})`,
+    const requested = [primary, ...(verification ? [verification] : [])];
+    const query = new URLSearchParams({
+      select: "model_id",
+      provider: "eq.nvidia",
+      enabled: "eq.true",
+      production_approved: "eq.true",
+      model_id: `in.(${requested.map((modelId) => `"${modelId.replace(/"/g, '\\"')}"`).join(",")})`,
+    });
+    const local = await fetch(`${url}/rest/v1/model_registry?${query}`,
       { headers: { apikey: key }, cache: "no-store", signal: AbortSignal.timeout(10000) });
     if (!local.ok) return null;
     const rows = (await local.json()) as Array<{ model_id?: string }>;
     const ids = new Set(rows.map((row) => row.model_id));
-    if (!ids.has(data.primary) || !ids.has(data.verification)) return null;
-    const value = { primary: data.primary, verification: data.verification };
+    if (!ids.has(primary)) return null;
+    const value: OcrRanking = {
+      primary,
+      verification: verification && ids.has(verification) ? verification : null,
+    };
     rankingCache = { value, expiresAt: Date.now() + 5 * 60_000 };
     return value;
   } catch { return null; }
