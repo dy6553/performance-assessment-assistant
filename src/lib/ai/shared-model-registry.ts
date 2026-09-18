@@ -3,11 +3,20 @@ import "server-only";
 const DEFAULT_SHARED_REGISTRY_URL =
   "https://siheomon-study-app-six.vercel.app/api/model-registry/approved";
 
+type SharedModelHealth = {
+  score: number;
+  successRate: number;
+  averageLatencyMs: number | null;
+  circuitOpenUntil: string | null;
+  checkedAt: string | null;
+};
+
 type SharedApprovedModel = {
   modelId: string;
   developerCompany: string;
   countryOfHeadquarters: string;
   capabilities: string[];
+  health: SharedModelHealth;
 };
 
 type SharedRegistryPayload = {
@@ -19,7 +28,11 @@ type SharedRegistryPayload = {
   models?: unknown;
 };
 
-type LocalRegistryRow = { model_id?: unknown };
+type LocalRegistryRow = {
+  model_id?: unknown;
+  production_approved?: unknown;
+  evaluation_profile_json?: unknown;
+};
 
 export type SharedModelRegistrySyncResult = {
   source: "siheomon";
@@ -35,7 +48,7 @@ export async function syncSharedApprovedModelRegistry(): Promise<SharedModelRegi
   const sharedIds = new Set(snapshot.models.map((model) => model.modelId));
 
   const currentResponse = await fetch(
-    `${supabaseUrl}/rest/v1/model_registry?select=model_id&provider=eq.nvidia&production_approved=eq.true`,
+    `${supabaseUrl}/rest/v1/model_registry?select=model_id,production_approved,evaluation_profile_json&provider=eq.nvidia`,
     {
       headers: { apikey: secretKey, Accept: "application/json" },
       cache: "no-store",
@@ -47,7 +60,13 @@ export async function syncSharedApprovedModelRegistry(): Promise<SharedModelRegi
   }
 
   const currentRows = (await currentResponse.json()) as LocalRegistryRow[];
+  const currentById = new Map(
+    currentRows
+      .filter((row): row is LocalRegistryRow & { model_id: string } => typeof row.model_id === "string")
+      .map((row) => [row.model_id.trim(), row]),
+  );
   const currentApprovedIds = currentRows
+    .filter((row) => row.production_approved === true)
     .map((row) => (typeof row.model_id === "string" ? row.model_id.trim() : ""))
     .filter(Boolean);
   const revokedIds = currentApprovedIds.filter((modelId) => !sharedIds.has(modelId));
@@ -62,6 +81,14 @@ export async function syncSharedApprovedModelRegistry(): Promise<SharedModelRegi
   }
 
   for (const model of snapshot.models) {
+    const previousEvaluation = isRecord(currentById.get(model.modelId)?.evaluation_profile_json)
+      ? currentById.get(model.modelId)!.evaluation_profile_json as Record<string, unknown>
+      : {};
+    const evaluationProfile = {
+      ...previousEvaluation,
+      sharedRegistrySource: "siheomon",
+      modelHealth: model.health,
+    };
     const body = {
       provider: "nvidia",
       enabled: true,
@@ -78,6 +105,7 @@ export async function syncSharedApprovedModelRegistry(): Promise<SharedModelRegi
       production_approved: true,
       catalog_available: true,
       catalog_source: "shared_siheomon_registry",
+      evaluation_profile_json: evaluationProfile,
       updated_at: new Date().toISOString(),
     };
 
@@ -93,9 +121,6 @@ export async function syncSharedApprovedModelRegistry(): Promise<SharedModelRegi
         body: JSON.stringify({
           model_id: model.modelId,
           ...body,
-          evaluation_profile_json: {
-            sharedRegistrySource: "siheomon",
-          },
         }),
         cache: "no-store",
         signal: AbortSignal.timeout(10_000),
@@ -161,11 +186,28 @@ function parseSharedModel(value: unknown): SharedApprovedModel | null {
   if (!capabilities.includes("korean") || !capabilities.includes("structured_output")) {
     return null;
   }
+  const healthValue = isRecord(value.health) ? value.health : {};
   return {
     modelId: value.modelId.trim(),
     developerCompany: value.developerCompany.trim(),
     countryOfHeadquarters: value.countryOfHeadquarters.trim(),
     capabilities,
+    health: {
+      score: boundedNumber(healthValue.score, 0.5),
+      successRate: boundedNumber(healthValue.successRate, 0.5),
+      averageLatencyMs:
+        typeof healthValue.averageLatencyMs === "number" && Number.isFinite(healthValue.averageLatencyMs)
+          ? healthValue.averageLatencyMs
+          : null,
+      circuitOpenUntil:
+        typeof healthValue.circuitOpenUntil === "string" && healthValue.circuitOpenUntil.trim()
+          ? healthValue.circuitOpenUntil
+          : null,
+      checkedAt:
+        typeof healthValue.checkedAt === "string" && healthValue.checkedAt.trim()
+          ? healthValue.checkedAt
+          : null,
+    },
   };
 }
 
@@ -210,4 +252,9 @@ function readRegistryConfig(): { supabaseUrl: string; secretKey: string } {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function boundedNumber(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(1, value));
 }

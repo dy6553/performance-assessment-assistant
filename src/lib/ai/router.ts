@@ -25,6 +25,10 @@ type ModelRecord = {
   formatAffinity: readonly string[];
   difficultyMin: number;
   difficultyMax: number;
+  healthScore: number;
+  healthSuccessRate: number;
+  healthLatencyMs: number | null;
+  circuitOpenUntil: string | null;
 };
 
 type RegistryRow = {
@@ -109,10 +113,14 @@ export async function routeModel({
   preferSpeed?: boolean;
   context?: ModelRoutingContext;
 }): Promise<ModelRoute> {
-  const candidates = await loadApprovedRegistry();
-  if (!candidates.length) {
+  const approvedCandidates = await loadApprovedRegistry();
+  if (!approvedCandidates.length) {
     throw new Error("일일 모델 목록에서 사용 가능한 승인 AI 모델이 없습니다.");
   }
+
+  const circuitHealthy = approvedCandidates.filter((candidate) => !isCircuitOpen(candidate));
+  const candidates = circuitHealthy.length ? circuitHealthy : approvedCandidates;
+  const circuitExcluded = approvedCandidates.length - candidates.length;
 
   const speedPreferred = preferSpeed ?? (await requestPrefersFastResponse());
   const difficulty = normalizeDifficulty(
@@ -173,7 +181,10 @@ export async function routeModel({
     reason: [
       "매일 자동 동기화된 NVIDIA 모델 목록과 Supabase Model Registry를 기준으로 후보를 구성했습니다.",
       "승인 Provider/Model, 비중국계, 학생 데이터 정책, 보안·개인정보 검토, production approval을 Hard Filter로 적용했습니다.",
-      `${contextSummary || "기본 과제 조건"}과 현재 작업 단계(${task})를 점수화해 최적 모델을 선택했습니다.`,
+      circuitExcluded > 0
+        ? `최근 상태 점검에서 circuit-open인 ${circuitExcluded}개 모델은 이번 라우팅에서 임시 제외했습니다.`
+        : "최근 상태 점검에서 circuit-open인 모델은 없습니다.",
+      `${contextSummary || "기본 과제 조건"}과 현재 작업 단계(${task}), 최근 성공률·응답속도를 함께 점수화해 최적 모델을 선택했습니다.`,
       speedPreferred
         ? "빠른 응답 모드가 켜져 있어 효율성과 task affinity에 가중치를 높였습니다."
         : preferHigh
@@ -202,6 +213,12 @@ function scoreModel(
   },
 ): number {
   let score = model.priority;
+
+  score += model.healthScore * 55;
+  score += model.healthSuccessRate * 35;
+  if (model.healthLatencyMs !== null) {
+    score -= Math.min(20, model.healthLatencyMs / 2_500);
+  }
 
   if (model.taskAffinity.includes(context.task)) score += 120;
   else if (model.taskAffinity.length > 0) score -= 25;
@@ -471,6 +488,7 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
   const formatAffinity = parseStringArray(evaluation.formatAffinity);
   const difficultyMin = normalizeDifficultyNumber(evaluation.difficultyMin, 1);
   const difficultyMax = normalizeDifficultyNumber(evaluation.difficultyMax, 7);
+  const health = isRecord(evaluation.modelHealth) ? evaluation.modelHealth : {};
 
   return {
     id: row.model_id.trim(),
@@ -484,6 +502,16 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
     formatAffinity,
     difficultyMin: Math.min(difficultyMin, difficultyMax),
     difficultyMax: Math.max(difficultyMin, difficultyMax),
+    healthScore: boundedNumber(health.score, 0.5),
+    healthSuccessRate: boundedNumber(health.successRate, 0.5),
+    healthLatencyMs:
+      typeof health.averageLatencyMs === "number" && Number.isFinite(health.averageLatencyMs)
+        ? health.averageLatencyMs
+        : null,
+    circuitOpenUntil:
+      typeof health.circuitOpenUntil === "string" && health.circuitOpenUntil.trim()
+        ? health.circuitOpenUntil
+        : null,
   };
 }
 
@@ -510,6 +538,17 @@ function normalizeDifficultyNumber(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value)
     ? normalizeDifficulty(value)
     : fallback;
+}
+
+function boundedNumber(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(1, value));
+}
+
+function isCircuitOpen(model: ModelRecord, now = Date.now()): boolean {
+  if (!model.circuitOpenUntil) return false;
+  const until = Date.parse(model.circuitOpenUntil);
+  return Number.isFinite(until) && until > now;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
