@@ -45,8 +45,9 @@ export async function extractRubricImages(
   if (imageUrls.length < 1) throw new Error("PDF에 페이지가 없습니다.");
   if (imageUrls.length > MAX_PAGES) throw new Error(`PDF는 ${MAX_PAGES}페이지 이하로 올려 주세요.`);
 
-  const model = process.env.NVIDIA_MODEL_VISION?.trim() || "nvidia/nemotron-nano-12b-v2-vl";
-  const fallbackModel = process.env.NVIDIA_MODEL_VISION_FALLBACK?.trim() || "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
+  const ranking = await loadOcrRanking();
+  const model = ranking?.primary || process.env.NVIDIA_MODEL_VISION?.trim() || "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
+  const fallbackModel = ranking?.verification || process.env.NVIDIA_MODEL_VISION_FALLBACK?.trim() || "meta/llama-3.2-11b-vision-instruct";
   const isAuto = documentType === "auto";
   const isGuide = documentType === "guide";
 
@@ -108,7 +109,29 @@ export async function extractRubricImages(
     ],
   });
 
-  return { ...run.data, pages: imageUrls.length, model: run.model };
+  const verifier = ranking?.verification && ranking.verification !== run.model
+    ? ranking.verification
+    : ranking?.primary && ranking.primary !== run.model ? ranking.primary : null;
+  if (!verifier) return { ...run.data, pages: imageUrls.length, model: run.model };
+  try {
+    const checked = await generateStructured({
+      taskName: "assignment_document_ocr_verification",
+      model: verifier,
+      schema: documentVisionSchema,
+      maxTokens: 10_000,
+      temperature: 0.05,
+      messages: [
+        { role: "system", content: `${system}\n원본 이미지와 1차 판독을 독립적으로 대조하세요. 원문과 다를 때만 수정하고 읽을 수 없는 글자는 uncertainText에 남기세요.` },
+        { role: "user", content: [
+          { type: "text", text: `1차 판독: ${JSON.stringify(run.data)}\n원본의 배점·조건·표 구조를 다시 확인해 최종 판독을 반환하세요.` },
+          ...imageUrls.map((url) => ({ type: "image_url" as const, image_url: { url } })),
+        ] },
+      ],
+    });
+    return { ...checked.data, pages: imageUrls.length, model: `${run.model} → ${checked.model}` };
+  } catch {
+    return { ...run.data, pages: imageUrls.length, model: run.model };
+  }
 }
 
 async function renderPdfPages(bytes: Uint8Array): Promise<Buffer[]> {
@@ -144,4 +167,34 @@ async function renderPdfPages(bytes: Uint8Array): Promise<Buffer[]> {
   } finally {
     await loadingTask.destroy();
   }
+}
+
+
+type OcrRanking = { primary: string; verification: string };
+let rankingCache: { value: OcrRanking; expiresAt: number } | undefined;
+
+async function loadOcrRanking(): Promise<OcrRanking | null> {
+  if (rankingCache && rankingCache.expiresAt > Date.now()) return rankingCache.value;
+  try {
+    const endpoint = (process.env.SHARED_MODEL_REGISTRY_URL?.trim() ||
+      "https://siheomon-study-app-six.vercel.app/api/model-registry/approved")
+      .replace(/\/approved\/?$/, "/ocr");
+    const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(10000) });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { success?: boolean; primary?: unknown; verification?: unknown };
+    if (data.success !== true || typeof data.primary !== "string" || typeof data.verification !== "string" || data.primary === data.verification) return null;
+    // The local hard filter must also have received both models through the shared registry.
+    const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.supabase_URL)?.trim().replace(/\/$/, "");
+    const key = (process.env.SUPABASE_SECRET_KEY || process.env.sb_secret_key)?.trim();
+    if (!url || !key) return null;
+    const local = await fetch(`${url}/rest/v1/model_registry?select=model_id&provider=eq.nvidia&enabled=eq.true&production_approved=eq.true&model_id=in.(${encodeURIComponent('"' + data.primary + '","' + data.verification + '"')})`,
+      { headers: { apikey: key }, cache: "no-store", signal: AbortSignal.timeout(10000) });
+    if (!local.ok) return null;
+    const rows = (await local.json()) as Array<{ model_id?: string }>;
+    const ids = new Set(rows.map((row) => row.model_id));
+    if (!ids.has(data.primary) || !ids.has(data.verification)) return null;
+    const value = { primary: data.primary, verification: data.verification };
+    rankingCache = { value, expiresAt: Date.now() + 5 * 60_000 };
+    return value;
+  } catch { return null; }
 }
