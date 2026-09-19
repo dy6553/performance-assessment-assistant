@@ -28,3 +28,11 @@ JSON 형식이 약한 모델을 Writer에 활용하면서도 파서나 채점기
 ## 역할 정보 즉시 동기화
 
 시험온 공용 Registry v3 배포 직후 다음 일일 Cron까지 기다리지 않고 workloads·qualityTier·priority·health를 수행도우미 Registry에 반영하기 위해 SHA-256 해시로 보호된 1회성 동기화 경로를 임시 추가한다. 원문 토큰은 저장소에 기록하지 않고 동기화 완료 직후 제거한다.
+
+## 즉시 동기화 결과
+
+- 시험온 Registry v3의 역할 정보와 health snapshot을 즉시 수행도우미로 동기화했다.
+- 중앙 승인 모델 11개가 로컬 Registry에 반영됐고 이번 동기화에서 revoke된 모델은 0개였다.
+- 각 모델의 `sharedWorkloads`, `qualityTier`, `priority`, `modelHealth`가 저장된 것을 Supabase에서 확인했다.
+- 이로써 수행도우미는 다음 일일 Cron을 기다리지 않고 task별 역할 필터와 health 기반 라우팅을 즉시 사용한다.
+- 임시 1회성 동기화 경로는 실행 후 제거했으며 다시 `CRON_SECRET` 인증만 허용한다.
