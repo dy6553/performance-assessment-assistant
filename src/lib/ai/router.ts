@@ -489,9 +489,11 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
       ? evaluation.priority
       : 0;
   const workloads = parseStringArray(evaluation.sharedWorkloads ?? evaluation.workloads);
-  const taskAffinity = Array.isArray(evaluation.taskAffinity)
-    ? evaluation.taskAffinity.filter(isAgentTask)
-    : taskAffinityForWorkloads(workloads);
+  const taskAffinity = workloads.length
+    ? taskAffinityForWorkloads(workloads)
+    : Array.isArray(evaluation.taskAffinity)
+      ? evaluation.taskAffinity.filter(isAgentTask)
+      : [];
   const subjectAffinity = parseStringArray(evaluation.subjectAffinity);
   const formatAffinity = parseStringArray(evaluation.formatAffinity);
   const difficultyMin = normalizeDifficultyNumber(evaluation.difficultyMin, 1);
