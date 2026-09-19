@@ -24,3 +24,7 @@ JSON 형식이 약한 모델을 Writer에 활용하면서도 파서나 채점기
 ## 전환 호환성
 
 공유 Registry의 `sharedWorkloads`가 있으면 과거 로컬 taskAffinity보다 중앙 역할 정보를 우선한다. 따라서 이전 승인 기록에 남아 있던 넓은 taskAffinity가 새 역할 제한을 우회하지 않는다.
+
+## 역할 정보 즉시 동기화
+
+시험온 공용 Registry v3 배포 직후 다음 일일 Cron까지 기다리지 않고 workloads·qualityTier·priority·health를 수행도우미 Registry에 반영하기 위해 SHA-256 해시로 보호된 1회성 동기화 경로를 임시 추가한다. 원문 토큰은 저장소에 기록하지 않고 동기화 완료 직후 제거한다.
