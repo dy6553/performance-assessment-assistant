@@ -16,6 +16,9 @@ type SharedApprovedModel = {
   developerCompany: string;
   countryOfHeadquarters: string;
   capabilities: string[];
+  workloads: string[];
+  qualityTier: "efficient" | "high";
+  priority: number;
   health: SharedModelHealth;
 };
 
@@ -88,6 +91,11 @@ export async function syncSharedApprovedModelRegistry(): Promise<SharedModelRegi
       ...previousEvaluation,
       sharedRegistrySource: "siheomon",
       modelHealth: model.health,
+      workloads: model.workloads,
+      sharedWorkloads: model.workloads,
+      qualityTier: model.qualityTier,
+      priority: model.priority,
+      taskAffinity: taskAffinityForWorkloads(model.workloads),
     };
     const body = {
       provider: "nvidia",
@@ -176,14 +184,18 @@ function parseSharedModel(value: unknown): SharedApprovedModel | null {
     typeof value.modelId !== "string" ||
     typeof value.developerCompany !== "string" ||
     typeof value.countryOfHeadquarters !== "string" ||
-    !Array.isArray(value.capabilities)
+    !Array.isArray(value.capabilities) ||
+    !Array.isArray(value.workloads)
   ) {
     return null;
   }
   const capabilities = value.capabilities.filter(
     (item): item is string => typeof item === "string",
   );
-  if (!capabilities.includes("korean") || !capabilities.includes("structured_output")) {
+  const workloads = value.workloads.filter(
+    (item): item is string => typeof item === "string",
+  );
+  if (!capabilities.includes("korean") || !workloads.includes("text_generation")) {
     return null;
   }
   const healthValue = isRecord(value.health) ? value.health : {};
@@ -192,6 +204,12 @@ function parseSharedModel(value: unknown): SharedApprovedModel | null {
     developerCompany: value.developerCompany.trim(),
     countryOfHeadquarters: value.countryOfHeadquarters.trim(),
     capabilities,
+    workloads,
+    qualityTier: value.qualityTier === "high" ? "high" : "efficient",
+    priority:
+      typeof value.priority === "number" && Number.isFinite(value.priority)
+        ? value.priority
+        : 0,
     health: {
       score: boundedNumber(healthValue.score, 0.5),
       successRate: boundedNumber(healthValue.successRate, 0.5),
@@ -252,6 +270,17 @@ function readRegistryConfig(): { supabaseUrl: string; secretKey: string } {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function taskAffinityForWorkloads(workloads: readonly string[]): string[] {
+  const tasks = new Set<string>(["strategy", "writer", "final_rewriter"]);
+  if (workloads.includes("structured_json")) {
+    tasks.add("task_parser");
+    tasks.add("rubric_grader");
+  }
+  if (workloads.includes("reasoning")) tasks.add("logic_critic");
+  if (workloads.includes("independent_review")) tasks.add("curriculum_verifier");
+  return Array.from(tasks);
 }
 
 function boundedNumber(value: unknown, fallback: number): number {

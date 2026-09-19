@@ -25,6 +25,7 @@ type ModelRecord = {
   formatAffinity: readonly string[];
   difficultyMin: number;
   difficultyMax: number;
+  workloads: readonly string[];
   healthScore: number;
   healthSuccessRate: number;
   healthLatencyMs: number | null;
@@ -119,8 +120,11 @@ export async function routeModel({
   }
 
   const circuitHealthy = approvedCandidates.filter((candidate) => !isCircuitOpen(candidate));
-  const candidates = circuitHealthy.length ? circuitHealthy : approvedCandidates;
-  const circuitExcluded = approvedCandidates.length - candidates.length;
+  const healthCandidates = circuitHealthy.length ? circuitHealthy : approvedCandidates;
+  const roleCandidates = healthCandidates.filter((candidate) => supportsTask(candidate, task));
+  const candidates = roleCandidates.length ? roleCandidates : healthCandidates;
+  const circuitExcluded = approvedCandidates.length - healthCandidates.length;
+  const roleExcluded = healthCandidates.length - candidates.length;
 
   const speedPreferred = preferSpeed ?? (await requestPrefersFastResponse());
   const difficulty = normalizeDifficulty(
@@ -184,6 +188,9 @@ export async function routeModel({
       circuitExcluded > 0
         ? `최근 상태 점검에서 circuit-open인 ${circuitExcluded}개 모델은 이번 라우팅에서 임시 제외했습니다.`
         : "최근 상태 점검에서 circuit-open인 모델은 없습니다.",
+      roleExcluded > 0
+        ? `현재 작업 역할과 맞지 않는 ${roleExcluded}개 모델은 후보에서 제외했습니다.`
+        : "현재 작업 역할을 수행할 수 있는 승인 모델만 비교했습니다.",
       `${contextSummary || "기본 과제 조건"}과 현재 작업 단계(${task}), 최근 성공률·응답속도를 함께 점수화해 최적 모델을 선택했습니다.`,
       speedPreferred
         ? "빠른 응답 모드가 켜져 있어 효율성과 task affinity에 가중치를 높였습니다."
@@ -468,7 +475,7 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
   }
 
   const capabilities = parseCapabilities(row.capabilities_json);
-  if (!capabilities.includes("korean") || !capabilities.includes("structured_output")) {
+  if (!capabilities.includes("korean")) {
     return null;
   }
 
@@ -481,9 +488,10 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
     typeof evaluation.priority === "number" && Number.isFinite(evaluation.priority)
       ? evaluation.priority
       : 0;
+  const workloads = parseStringArray(evaluation.sharedWorkloads ?? evaluation.workloads);
   const taskAffinity = Array.isArray(evaluation.taskAffinity)
     ? evaluation.taskAffinity.filter(isAgentTask)
-    : [];
+    : taskAffinityForWorkloads(workloads);
   const subjectAffinity = parseStringArray(evaluation.subjectAffinity);
   const formatAffinity = parseStringArray(evaluation.formatAffinity);
   const difficultyMin = normalizeDifficultyNumber(evaluation.difficultyMin, 1);
@@ -502,6 +510,11 @@ function toModelRecord(row: RegistryRow): ModelRecord | null {
     formatAffinity,
     difficultyMin: Math.min(difficultyMin, difficultyMax),
     difficultyMax: Math.max(difficultyMin, difficultyMax),
+    workloads: workloads.length
+      ? workloads
+      : capabilities.includes("structured_output")
+        ? ["text_generation", "structured_json"]
+        : ["text_generation"],
     healthScore: boundedNumber(health.score, 0.5),
     healthSuccessRate: boundedNumber(health.successRate, 0.5),
     healthLatencyMs:
@@ -543,6 +556,30 @@ function normalizeDifficultyNumber(value: unknown, fallback: number): number {
 function boundedNumber(value: unknown, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.max(0, Math.min(1, value));
+}
+
+function supportsTask(model: ModelRecord, task: AgentTask): boolean {
+  const roles = model.workloads;
+  if (task === "task_parser" || task === "rubric_grader") {
+    return roles.includes("structured_json");
+  }
+  if (task === "logic_critic") return roles.includes("reasoning");
+  if (task === "curriculum_verifier") return roles.includes("independent_review");
+  if (task === "strategy" || task === "writer" || task === "final_rewriter") {
+    return roles.includes("text_generation") || roles.includes("writer");
+  }
+  return true;
+}
+
+function taskAffinityForWorkloads(workloads: readonly string[]): AgentTask[] {
+  const tasks = new Set<AgentTask>(["strategy", "writer", "final_rewriter"]);
+  if (workloads.includes("structured_json")) {
+    tasks.add("task_parser");
+    tasks.add("rubric_grader");
+  }
+  if (workloads.includes("reasoning")) tasks.add("logic_critic");
+  if (workloads.includes("independent_review")) tasks.add("curriculum_verifier");
+  return Array.from(tasks);
 }
 
 function isCircuitOpen(model: ModelRecord, now = Date.now()): boolean {
