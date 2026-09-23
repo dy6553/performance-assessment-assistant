@@ -1,4 +1,4 @@
-const CACHE_NAME = "performance-helper-shell-v3";
+const CACHE_NAME = "performance-helper-shell-v4";
 const HISTORY_CACHE_NAME = "performance-helper-history-v1";
 const HISTORY_PREFIX = "/__wanhee_assignment_history__/";
 const HISTORY_TTL_MS = 24 * 60 * 60 * 1000;
