@@ -127,7 +127,7 @@ export function SettingsPreferences({
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      setTheme(localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light");
+      setTheme(localStorage.getItem(THEME_KEY) === "dark" ? "dark" : localStorage.getItem(THEME_KEY) === "light" ? "light" : "system");
       setFontSize(safeFontSize(localStorage.getItem(FONT_SIZE_KEY)));
       setReduceMotion(localStorage.getItem(REDUCE_MOTION_KEY) === "1");
       setHighContrast(localStorage.getItem(HIGH_CONTRAST_KEY) === "1");
@@ -183,15 +183,16 @@ export function SettingsPreferences({
 
   function applyVisualPreferences() {
     const root = document.documentElement;
-    root.dataset.theme = theme;
+    const resolvedTheme = theme === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme;
+    root.dataset.theme = resolvedTheme;
     root.dataset.fontSize = fontSize;
     root.dataset.reduceMotion = reduceMotion ? "true" : "false";
     root.dataset.highContrast = highContrast ? "true" : "false";
     root.dataset.largeControls = largeControls ? "true" : "false";
     root.dataset.fastResponse = fastResponse ? "true" : "false";
     root.dataset.dataSaver = dataSaver ? "true" : "false";
-    root.style.colorScheme = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#111827" : "#f8fafc");
+    root.style.colorScheme = resolvedTheme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", resolvedTheme === "dark" ? "#111827" : "#f8fafc");
     window.dispatchEvent(new Event("assessment-theme-change"));
     preferenceChanged();
   }
@@ -289,7 +290,7 @@ export function SettingsPreferences({
     SETTINGS_BACKUP_KEYS.forEach((key) => localStorage.removeItem(key));
     localStorage.removeItem(CACHE_LAST_CLEANUP_KEY);
     sessionStorage.removeItem(START_SESSION_KEY);
-    const nextTheme: ThemePreference = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const nextTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     document.documentElement.dataset.theme = nextTheme;
     document.documentElement.dataset.fontSize = "default";
     document.documentElement.dataset.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "true" : "false";
@@ -410,7 +411,7 @@ export function SettingsPreferences({
   } else if (section === "display") {
     content = (
       <>
-        <SettingsRow title="화면 테마" description="라이트 또는 다크 화면을 선택합니다." control={<Segmented value={theme} items={[["light", "라이트"], ["dark", "다크"]]} onChange={(value) => { setTheme(value as ThemePreference); setMessage(""); }} />} />
+        <SettingsRow title="화면 테마" description="라이트, 다크 또는 기기 설정을 선택합니다." control={<Segmented value={theme} items={[["light", "라이트"], ["dark", "다크"], ["system", "시스템 설정"]]} onChange={(value) => { setTheme(value as ThemePreference); setMessage(""); }} />} />
         <SettingsRow title="글자 크기" description="앱 전체 글자 크기를 조절합니다." control={<Segmented value={fontSize} items={[["small", "작게"], ["default", "기본"], ["large", "크게"]]} onChange={(value) => { setFontSize(value as FontSizePreference); setMessage(""); }} />} />
       </>
     );

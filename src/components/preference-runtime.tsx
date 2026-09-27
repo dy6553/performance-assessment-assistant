@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import {
+  THEME_KEY,
   CACHE_CLEANUP_DAYS_KEY,
   CACHE_LAST_CLEANUP_KEY,
   CACHE_LIMIT_MB_KEY,
@@ -62,7 +63,9 @@ export function PreferenceRuntime() {
 
     const handlePreferenceChange = () => applyVisualPreferences();
     window.addEventListener("assessment-preference-change", handlePreferenceChange);
-    return () => window.removeEventListener("assessment-preference-change", handlePreferenceChange);
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    media.addEventListener("change", handlePreferenceChange);
+    return () => { window.removeEventListener("assessment-preference-change", handlePreferenceChange); media.removeEventListener("change", handlePreferenceChange); };
   }, []);
 
   useEffect(() => {
@@ -165,6 +168,11 @@ function seedAssignmentDraft(slugOrStartPage: AssignmentSlug | StartPagePreferen
 
 function applyVisualPreferences() {
   const root = document.documentElement;
+  const savedTheme = localStorage.getItem(THEME_KEY);
+  const resolvedTheme = savedTheme === "light" || savedTheme === "dark" ? savedTheme : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  root.dataset.theme = resolvedTheme;
+  root.style.colorScheme = resolvedTheme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", resolvedTheme === "dark" ? "#111827" : "#f8fafc");
   root.dataset.fontSize = safeFontSize(localStorage.getItem(FONT_SIZE_KEY));
   root.dataset.reduceMotion = localStorage.getItem(REDUCE_MOTION_KEY) === "1" ? "true" : "false";
   root.dataset.highContrast = localStorage.getItem(HIGH_CONTRAST_KEY) === "1" ? "true" : "false";

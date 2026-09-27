@@ -69,6 +69,7 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState("");
   const [error, setError] = useState("");
+  const [workspaceView, setWorkspaceView] = useState<"strategy" | "draft" | "verification">("strategy");
 
   const typeMeta = getAssignmentTypeByValue(assignment.assignmentType);
   const draftText = useMemo(
@@ -226,6 +227,7 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
       }
 
       setDraft(payload.data);
+      setWorkspaceView("draft");
       setVerification(null);
       writeStorage(assessmentDraftStorageKey, payload.data);
       removeStorage(assessmentVerificationStorageKey);
@@ -257,6 +259,7 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
       }
 
       setVerification(payload.data);
+      setWorkspaceView("verification");
       writeStorage(assessmentVerificationStorageKey, payload.data);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "검증 중 오류가 발생했습니다.");
@@ -318,6 +321,8 @@ export function AssessmentWizard({ screen, typeSlug }: WizardProps) {
           onGenerate={() => void generate()}
           onVerify={() => void verify()}
           verification={verification}
+          view={workspaceView}
+          onViewChange={setWorkspaceView}
         />
       ) : null}
     </main>
@@ -489,6 +494,8 @@ function WorkspaceScreen({
   onGenerate,
   onVerify,
   verification,
+  view,
+  onViewChange,
 }: {
   analysis: AnalysisResult | null;
   assignment: AssignmentInput;
@@ -499,6 +506,8 @@ function WorkspaceScreen({
   onGenerate: () => void;
   onVerify: () => void;
   verification: VerificationWithScore | null;
+  view: "strategy" | "draft" | "verification";
+  onViewChange: (view: "strategy" | "draft" | "verification") => void;
 }) {
   if (!analysis) {
     return (
@@ -512,7 +521,12 @@ function WorkspaceScreen({
 
   return (
     <div className="mt-6 space-y-6">
-      <section className="rounded-[2rem] border border-violet-200 bg-violet-50/60 p-5 sm:p-7">
+      <nav className="flex flex-wrap gap-2" aria-label="작성 단계">
+        <button type="button" aria-current={view === "strategy" ? "step" : undefined} onClick={() => onViewChange("strategy")} className={view === "strategy" ? primaryButtonClass : secondaryButtonClass}>작성 전략</button>
+        {draft ? <button type="button" aria-current={view === "draft" ? "step" : undefined} onClick={() => onViewChange("draft")} className={view === "draft" ? primaryButtonClass : secondaryButtonClass}>초안</button> : null}
+        {verification ? <button type="button" aria-current={view === "verification" ? "step" : undefined} onClick={() => onViewChange("verification")} className={view === "verification" ? primaryButtonClass : secondaryButtonClass}>검증 결과</button> : null}
+      </nav>
+      {view === "strategy" ? <section className="rounded-[2rem] border border-violet-200 bg-violet-50/60 p-5 sm:p-7">
         <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">작성 전략</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-black text-slate-950">{analysis.taskType.primary}</h1>
@@ -537,9 +551,9 @@ function WorkspaceScreen({
             {draft ? "초안 다시 작성" : "이 전략으로 초안 작성"}
           </button>
         </div>
-      </section>
+      </section> : null}
 
-      {draft ? (
+      {view === "draft" && draft ? (
         <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-600">수행평가 초안</p>
           <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-slate-950">{draft.title}</h2>
@@ -561,7 +575,7 @@ function WorkspaceScreen({
         </section>
       ) : null}
 
-      {verification ? <VerificationPanel result={verification} /> : null}
+      {view === "verification" && verification ? <VerificationPanel result={verification} /> : null}
 
       <Feedback error={error} loading={loading} />
 
@@ -580,7 +594,7 @@ function FlowHeader({ screen, assignmentType }: { screen: Screen; assignmentType
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link className="text-sm font-black text-violet-700" href="/">← 수행평가 유형</Link>
+        <Link className="text-sm font-black text-violet-700" href="/create">← 수행평가 유형</Link>
         <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-700">{assignmentType}</span>
       </div>
       <div className="mt-5 grid grid-cols-5 gap-1.5" aria-label="진행 단계">

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Icon, type IconName } from "./icons";
-import { ThemeToggle } from "./theme-toggle";
 
 type NavigationItem = {
   href: string;
@@ -46,30 +45,9 @@ const navigation: NavigationItem[] = [
 
 const mobileNavigation: NavigationItem[] = [
   { href: "/", label: "홈", icon: "home" },
-  {
-    href: "/ai-tools",
-    label: "AI",
-    icon: "sparkles",
-    activePrefixes: ["/ai-tools", "/topic-recommender", "/assignment/setup/auto", "/grader"],
-  },
-  {
-    href: "/create",
-    label: "만들기",
-    icon: "document",
-    activePrefixes: [
-      "/create",
-      "/assignment/report",
-      "/assignment/presentation",
-      "/assignment/inquiry",
-      "/assignment/setup/research-report",
-      "/assignment/setup/inquiry-report",
-      "/assignment/setup/presentation",
-      "/assignment/setup/visual-material",
-      "/assignment/setup/experiment",
-      "/assignment/setup/real-life-inquiry",
-    ],
-  },
-  { href: "/calendar", label: "캘린더", icon: "calendar" },
+  { href: "/ai-tools", label: "AI", icon: "sparkles", activePrefixes: ["/topic-recommender", "/assignment/setup/auto", "/grader"] },
+  { href: "/create", label: "만들기", icon: "document", activePrefixes: ["/assignment/report", "/assignment/presentation", "/assignment/inquiry", "/assignment/setup", "/assignment/topic", "/assignment/workspace", "/assignment/draft", "/assignment/review", "/assignment/verification", "/assignment/final"] },
+  { href: "/assignment/history", label: "기록", icon: "history", activePrefixes: ["/calendar"] },
   { href: "/settings", label: "설정", icon: "settings" },
 ];
 
@@ -125,7 +103,7 @@ export function AppShell({
           <div className="ml-2 flex shrink-0 items-center gap-1.5 sm:gap-2">
             {isAdmin ? (
               <Link
-                className="inline-flex min-h-10 items-center rounded-full border border-violet-200 bg-gradient-to-r from-violet-100 to-sky-50 px-3 py-2 text-xs font-black text-violet-900 shadow-sm transition hover:border-violet-300 active:scale-[0.97]"
+                className="inline-flex min-h-11 items-center rounded-xl border border-violet-200 px-3 text-xs font-black text-violet-900"
                 href="/admin"
               >
                 관리자
@@ -134,7 +112,7 @@ export function AppShell({
             <Link
               aria-current={historyActive ? "page" : undefined}
               aria-label="최근 작업 기록"
-              className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-black transition active:scale-[0.97] ${
+              className={`hidden min-h-11 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black transition active:scale-[0.97] sm:inline-flex ${
                 historyActive
                   ? "bg-violet-100 text-violet-800"
                   : "bg-slate-50 text-slate-600 hover:bg-violet-50 hover:text-violet-800"
@@ -145,9 +123,8 @@ export function AppShell({
               <Icon className="size-4" name="history" />
               <span className="hidden sm:inline">기록</span>
             </Link>
-            <ThemeToggle compact />
             <Link
-              className="inline-flex min-h-10 items-center rounded-full bg-gradient-to-r from-violet-50 to-fuchsia-50 px-3 py-2 text-xs font-black text-violet-800 transition active:scale-[0.97]"
+              className="inline-flex min-h-11 items-center rounded-xl bg-violet-50 px-3 py-2 text-xs font-black text-violet-800"
               href={signedIn ? "/account" : "/login"}
             >
               {signedIn ? "내 계정" : "로그인"}

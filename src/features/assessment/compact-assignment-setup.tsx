@@ -28,6 +28,7 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
   const [assignment, setAssignment] = useState<AssignmentInput>(initialAssignment);
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState("");
+  const [entryStep, setEntryStep] = useState<"basics" | "guide">("basics");
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -105,23 +106,24 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-4 py-5 sm:px-6 sm:py-8">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <Link className="text-sm font-black text-violet-700" href="/">← 수행평가 유형</Link>
+        <Link className="text-sm font-black text-violet-700" href="/create">← 유형 선택</Link>
         <span className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-black text-violet-700">{typeMeta.shortTitle}</span>
       </div>
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <div role="status" className="mb-4 text-sm font-bold text-violet-700">{entryStep === "basics" ? "2 / 5 · 기본 정보" : "2 / 5 · 과제 안내"}<div className="mt-2 h-1.5 overflow-hidden rounded-full bg-violet-100"><div className="h-full w-[40%] rounded-full bg-violet-600" /></div></div>
+      <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-600">과제 정보</p>
-            <h1 className="mt-2 text-2xl font-black tracking-[-0.035em] text-slate-950 sm:text-3xl">{typeMeta.title} 정보 입력</h1>
+            <h1 className="mt-2 text-2xl font-black tracking-[-0.035em] text-slate-950 sm:text-3xl">{entryStep === "basics" ? `${typeMeta.title} 기본 정보` : "과제 안내를 확인해 주세요"}</h1>
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
               <span className="font-black text-violet-700">*</span> 표시 항목은 필수입니다. 선택 항목은 필요한 경우에만 입력하세요.
             </p>
           </div>
-          <Link className="inline-flex min-h-10 items-center rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-600" href="/">유형 다시 선택</Link>
+          <Link className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 px-3 text-xs font-black text-slate-600" href="/create">유형 다시 선택</Link>
         </div>
 
-        <div className="mt-6 space-y-5">
+        {entryStep === "basics" ? <div className="mt-6 space-y-5">
           <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="교육과정" required>
@@ -173,8 +175,9 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
               <input className={inputClass} value={assignment.lengthRule} onChange={(event) => update("lengthRule", event.target.value)} placeholder="예: 1500자, A4 2쪽, 5분" />
             </Field>
           </div>
-        </div>
+        </div> : null}
 
+        {entryStep === "guide" ? <>
         <div className="mt-5">
           <div className="mb-2 flex items-center gap-2 text-sm font-black text-slate-700">
             과제 문서 <span className="text-violet-700" aria-label="필수">*</span>
@@ -221,10 +224,12 @@ export function CompactAssignmentSetup({ typeSlug, keepType }: { typeSlug: strin
           </div>
         </details>
 
-        {error ? <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</p> : null}
+        </> : null}
+        {error ? <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{error}</p> : null}
 
         <div className="mt-6 flex justify-end">
-          <button className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-violet-700" onClick={continueToTopic} type="button">주제 선택으로 다음 →</button>
+          {entryStep === "guide" ? <button className="mr-auto min-h-12 px-3 text-sm font-bold text-violet-700" onClick={() => { setError(""); setEntryStep("basics"); }} type="button">← 기본 정보 수정</button> : null}
+          <button className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-violet-700 px-5 py-3 text-sm font-black text-white hover:bg-violet-800" onClick={entryStep === "basics" ? () => { if (!assignment.subject.trim() || !assignment.course.trim()) { setError("과목과 세부단원을 입력해 주세요."); return; } setError(""); setEntryStep("guide"); window.scrollTo({top: 0, behavior: "smooth"}); } : continueToTopic} type="button">{entryStep === "basics" ? "과제 안내 입력 →" : "주제 선택으로 다음 →"}</button>
         </div>
       </section>
     </main>

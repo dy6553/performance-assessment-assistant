@@ -202,3 +202,21 @@ html[data-reduce-motion="true"] *::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
 }
+
+/* The app owns its palette even when the browser requests a dark color scheme. */
+html[data-theme="dark"] .bg-violet-50\/70,
+html[data-theme="dark"] .bg-violet-50\/40,
+html[data-theme="dark"] .hover\:bg-violet-50\/50:hover {
+  background-color: #211b39 !important;
+}
+html[data-theme="dark"] .border-violet-200,
+html[data-theme="dark"] .border-slate-200 {
+  border-color: #334155 !important;
+}
+html[data-theme="dark"] .hover\:bg-violet-50\/40:hover {
+  background-color: #2b2544 !important;
+}
+html[data-theme="dark"] .bg-violet-100 { background-color: #32294f !important; }
+html[data-theme="dark"] .text-white { color: #fff !important; }
+html[data-theme="dark"] ::placeholder { color: #94a3b8; }
+html, body { max-width: 100%; overflow-x: clip; }

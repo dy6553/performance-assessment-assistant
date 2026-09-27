@@ -1,4 +1,4 @@
-export type ThemePreference = "light" | "dark";
+export type ThemePreference = "light" | "dark" | "system";
 export type FontSizePreference = "small" | "default" | "large";
 export type StartPagePreference = "home" | "auto" | "report" | "presentation" | "experiment";
 export type CacheCleanupDays = "off" | "7" | "30" | "90";

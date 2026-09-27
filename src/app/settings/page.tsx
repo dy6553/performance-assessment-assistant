@@ -84,20 +84,27 @@ export default function SettingsPage() {
         title="설정"
       />
 
-      <div className="space-y-3">
-        {CATEGORIES.map((category) => (
-          <Link
-            className="flex min-h-20 items-center justify-between gap-4 rounded-[1.65rem] border border-slate-200 bg-white/90 px-5 py-4 shadow-sm transition hover:border-violet-200 hover:bg-violet-50/50 active:scale-[0.99]"
-            href={category.href}
-            key={category.href}
-            prefetch
-          >
-            <div className="min-w-0 flex-1">
-              <h2 className="font-black text-slate-950">{category.title}</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-500">{category.description}</p>
+      <div className="space-y-6">
+        {[
+          { title: "기본 설정", paths: ["/settings/generation", "/settings/textbooks", "/settings/files"] },
+          { title: "화면 및 사용성", paths: ["/settings/display", "/settings/accessibility", "/settings/behavior"] },
+          { title: "알림 및 시작", paths: ["/settings/notifications", "/settings/navigation"] },
+          { title: "데이터", paths: ["/settings/devices", "/settings/storage", "/settings/backup"] },
+          { title: "기타", paths: ["/settings/connections", "/settings/about", "/settings/misc"] },
+        ].map((group) => (
+          <section key={group.title} aria-label={group.title}>
+            <h2 className="mb-2 text-base font-black text-slate-900">{group.title}</h2>
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              {group.paths.map((path) => {
+                const category = CATEGORIES.find((item) => item.href === path);
+                if (!category) return null;
+                return <Link key={path} href={path} className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 hover:bg-violet-50/50">
+                  <span className="min-w-0"><span className="block font-bold text-slate-950">{category.title}</span><span className="block text-xs leading-5 text-slate-500">{category.description}</span></span>
+                  <span className="shrink-0 text-violet-700" aria-hidden="true">›</span>
+                </Link>;
+              })}
             </div>
-            <span className="shrink-0 text-xl font-bold text-violet-700" aria-hidden="true">›</span>
-          </Link>
+          </section>
         ))}
       </div>
     </main>
