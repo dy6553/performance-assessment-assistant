@@ -1,6 +1,6 @@
 # 수행도우미 개발 가이드
 
-이 문서는 `dy6553/wanhee` 저장소에서 기능 추가, UI 수정, AI 라우팅, 배포 작업을 수행할 때 지켜야 할 프로젝트 기준을 정리한다.
+이 문서는 `dy6553/performance-assessment-assistant` 저장소에서 기능 추가, UI 수정, AI 라우팅, 배포 작업을 수행할 때 지켜야 할 프로젝트 기준을 정리한다.
 
 ## 1. 제품 목표
 
@@ -90,3 +90,19 @@ Supabase Model Registry의 승인 모델만 사용한다. 학생 데이터 사�
 - `public/sw.js`: 서비스 워커
 
 이 문서는 구현과 실제 동작이 달라지면 함께 갱신한다.
+
+
+## 사용자 지정 작업 규칙과 프로젝트 연결 정보 (2026-10-01)
+
+다음 정보는 사용자가 직접 지정한 프로젝트 연결 정보다. 새 Codex 세션에서도 작업 시작 시 이 문서를 읽고 대상 저장소와 Supabase 프로젝트를 확인한다.
+
+| 서비스 | GitHub 저장소 | Supabase 프로젝트 |
+| --- | --- | --- |
+| 시험온 | https://github.com/dy6553/test-assistant | https://supabase.com/dashboard/project/jqbbsdoivsulehxmrkjl |
+| 수행 도우미 | https://github.com/dy6553/performance-assessment-assistant | https://supabase.com/dashboard/project/whdgkzxnjdcudypyvmau |
+
+- 모든 수정 내용은 해당 GitHub 저장소에 Markdown 문서로 남긴다. 새 `.md` 파일을 만들거나 기존 `.md` 파일을 수정하는 두 방식 중 하나를 반드시 사용한다.
+- 문서에는 요청 사항, 실제 변경 내용, 검증 결과와 미완료 사항을 구분해서 기록한다. 계획이나 요청서만 작성한 상태를 구현 완료로 기록하지 않는다.
+- 로컬 문서 작성만으로 끝내지 않고 GitHub 반영 결과를 확인한다.
+- 다른 서비스의 저장소나 Supabase 프로젝트를 수정 대상으로 혼동하지 않는다.
+- API 키, 토큰, 비밀번호는 이 문서나 다른 저장소 파일에 기록하지 않는다.
